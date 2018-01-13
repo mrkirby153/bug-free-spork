@@ -1,0 +1,25 @@
+# Eclipse
+.classpath
+.project
+.settings/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+
+# Mac
+.DS_Store
+
+# Maven
+log/
+target/
+
+# .bak files
+*.bak
+
+classes/
+src/main/resources/rebel.xml
+/data/*
+sentry\.properties
+.data
