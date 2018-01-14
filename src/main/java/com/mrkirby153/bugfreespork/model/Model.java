@@ -4,6 +4,7 @@ import com.google.common.base.CaseFormat;
 import com.mrkirby153.bugfreespork.ConnectionFactory;
 import com.mrkirby153.bugfreespork.annotations.Column;
 import com.mrkirby153.bugfreespork.annotations.PrimaryKey;
+import com.mrkirby153.bugfreespork.annotations.Table;
 
 import java.beans.Transient;
 import java.lang.reflect.Field;
@@ -57,6 +58,26 @@ public class Model {
     }
 
     /**
+     * Gets the name of the table for this class
+     *
+     * @return The table's name
+     */
+    public String getTableName() {
+        return this.getClass().isAnnotationPresent(Table.class) ? this.getClass()
+            .getAnnotation(Table.class).value()
+            : CaseFormat.UPPER_CAMEL.to(CaseFormat.LOWER_UNDERSCORE, getClass().getName());
+    }
+
+    /**
+     * Gets a list of all the column names
+     *
+     * @return The column names
+     */
+    public List<String> getColumnNames() {
+        return new ArrayList<>(this.getColumns().keySet());
+    }
+
+    /**
      * Gets a field's column name. This method first checks if there is a {@link Column} annotation
      * to override the column's name. If the annotation is not present, it uses the field's name in snake case
      *
@@ -67,6 +88,25 @@ public class Model {
     private String getColumnName(Field field) {
         return field.isAnnotationPresent(Column.class) ? field.getAnnotation(Column.class).value()
             : CaseFormat.UPPER_CAMEL.to(CaseFormat.LOWER_UNDERSCORE, field.getName());
+    }
+
+    /**
+     * Sets the mode's value from the column
+     *
+     * @param column The SQL column
+     * @param value  The value to set
+     */
+    protected void set(String column, Object value) {
+        try {
+            for (Field f : getFields()) {
+                if (getColumnName(f).equals(column)) {
+                    f.set(this, value);
+                    return;
+                }
+            }
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        }
     }
 
     /**
