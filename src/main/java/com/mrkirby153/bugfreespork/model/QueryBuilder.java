@@ -140,7 +140,7 @@ public class QueryBuilder<T extends Model> {
             primaryKey, "=", cols.get(primaryKey).toString()));
     }
 
-    public void insert() {
+    public void create() {
         try {
             StringBuilder query =
                 new StringBuilder(
