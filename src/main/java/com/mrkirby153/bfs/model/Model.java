@@ -8,6 +8,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 /**
@@ -30,6 +31,11 @@ public class Model {
         connectionFactory = factory;
     }
 
+    /**
+     * Gets the column's data
+     *
+     * @return The model's data ready to be stored in the database
+     */
     public HashMap<String, Object> getColumnData() {
         HashMap<String, Object> data = new HashMap<>();
 
@@ -42,6 +48,28 @@ public class Model {
             }
         });
         return data;
+    }
+
+    /**
+     * Takes data retrieved from the database and sets it on the model
+     *
+     * @param data The data received from the database
+     */
+    public void setData(HashMap<String, Object> data) {
+        data.forEach((column, d) -> {
+            Optional<Field> fieldOptional = getAccessibleFields().stream()
+                .filter(f -> getColumnName(f).equals(column)).findFirst();
+            if (!fieldOptional.isPresent()) {
+                throw new IllegalArgumentException(
+                    String.format("The column %s was not found", column));
+            }
+            Field f = fieldOptional.get();
+            try {
+                f.set(this, d);
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            }
+        });
     }
 
     /**
