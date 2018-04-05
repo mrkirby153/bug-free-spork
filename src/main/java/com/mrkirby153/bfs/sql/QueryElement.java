@@ -20,11 +20,4 @@ public interface QueryElement {
      * @return The query
      */
     List<Object> getBindings();
-
-    /**
-     * The priority of the statement
-     *
-     * @return The statement
-     */
-    int priority();
 }

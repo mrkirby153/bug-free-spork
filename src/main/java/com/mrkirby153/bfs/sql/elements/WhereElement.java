@@ -29,9 +29,4 @@ public class WhereElement implements QueryElement {
     public List<Object> getBindings() {
         return Collections.singletonList(this.object);
     }
-
-    @Override
-    public int priority() {
-        return  0;
-    }
 }

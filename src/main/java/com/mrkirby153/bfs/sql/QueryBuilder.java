@@ -2,12 +2,12 @@ package com.mrkirby153.bfs.sql;
 
 import com.mrkirby153.bfs.model.Model;
 import com.mrkirby153.bfs.sql.elements.GenericElement;
-import com.mrkirby153.bfs.sql.elements.WhereElement;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * A query builder for translating model operations into SQL queries
@@ -18,8 +18,7 @@ public class QueryBuilder<T extends Model> {
 
     private T modelInstance;
 
-    private List<QueryElement> queryElements = new ArrayList<>();
-    private List<QueryElement> scopes = new ArrayList<>();
+    private HashMap<Binding, ArrayList<QueryElement>> queryBindings = new HashMap<>();
 
     public QueryBuilder(Class<T> clazz) {
         this.modelClass = clazz;
@@ -57,62 +56,70 @@ public class QueryBuilder<T extends Model> {
      * @return The query builder
      */
     public QueryBuilder where(String column, String test, Object object) {
-        this.scopes.add(new WhereElement(test, column, object));
+        addBinding(Binding.WHERE, new GenericElement(String.format("%s %s ?", column, test)));
         return this;
     }
 
     /**
-     * Builds the select statement for the query
+     * Sets the table to use in this query
      *
-     * @param columns The columns to select
+     * @param table The table to use
      *
-     * @return The select statement
+     * @return The builder
      */
-    public String buildSelectStatement(String... columns) {
-        String colString = buildColumnList(columns);
-
-        this.queryElements.add(new GenericElement("SELECT ("));
-        this.queryElements.add(new GenericElement(colString.substring(0, colString.length() - 2)));
-        this.queryElements
-            .add(new GenericElement(") FROM `" + this.modelInstance.getTable() + "`"));
-
-        return buildQuery();
-    }
-
-    /**
-     * Builds the column list to use on the query
-     *
-     * @param columns The columns to use
-     *
-     * @return The column list
-     */
-    private String buildColumnList(String[] columns) {
-        StringBuilder cols = new StringBuilder();
-        if (columns.length == 0) {
-            this.modelInstance.getColumnData().keySet().forEach(d -> {
-                cols.append(d);
-                cols.append(", ");
-            });
-        } else {
-            for (String s : columns) {
-                cols.append(s);
-                cols.append(", ");
-            }
-        }
-        return cols.toString();
+    public QueryBuilder table(String table) {
+        addBinding(Binding.FROM, new GenericElement(String.format("`%s`", table)));
+        return this;
     }
 
     /**
      * Constructs the query
      *
-     * @return The constructed query
+     * @return The query
      */
-    private String buildQuery() {
-        StringBuilder queryString = new StringBuilder();
-        this.queryElements.forEach(q -> queryString.append(q.getQuery()).append(" "));
+    public String buildQuery() {
+        StringBuilder sb = new StringBuilder();
+        for (Binding b : Binding.values()) {
+            ArrayList<QueryElement> el = this.queryBindings.get(b);
+            StringBuilder s = new StringBuilder();
+            if (el == null) {
+                continue;
+            }
+            el.forEach(e -> {
+                s.append(b.getPrefix());
+                s.append(" ");
+                s.append(e.getQuery());
+                s.append(" ");
+            });
+            String builtString = s.toString();
 
-        queryString.append(buildScope());
-        return queryString.toString().trim();
+            // Remove the first boolean operator
+            if (b == Binding.WHERE) {
+                builtString = builtString.replaceFirst("AND\\s?", "");
+            }
+            sb.append(builtString);
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Selects the columns to be used
+     *
+     * @param columns The columns to use
+     *
+     * @return The query builder
+     */
+    public QueryBuilder columns(String... columns) {
+        // Join the columns
+        StringBuilder joinedColsBuilder = new StringBuilder();
+        for (String s : columns) {
+            joinedColsBuilder.append(s).append(", ");
+        }
+        String joinedCols = joinedColsBuilder.toString();
+
+        addBinding(Binding.SELECT,
+            new GenericElement("(" + joinedCols.substring(0, joinedCols.length() - 2) + ")"));
+        return this;
     }
 
     /**
@@ -124,34 +131,24 @@ public class QueryBuilder<T extends Model> {
      */
     private void bindObjects(PreparedStatement statement) throws SQLException {
         int index = 1;
-        for (QueryElement e : this.queryElements) {
-            for (Object binding : e.getBindings()) {
-                statement.setObject(index++, binding);
-            }
-        }
-
-        for (QueryElement scopes : this.scopes) {
-            for (Object binding : scopes.getBindings()) {
-                statement.setObject(index++, binding);
+        for (Map.Entry<Binding, ArrayList<QueryElement>> e : this.queryBindings.entrySet()) {
+            for (QueryElement el : e.getValue()) {
+                for (Object o : el.getBindings()) {
+                    statement.setObject(index++, o);
+                }
             }
         }
     }
 
     /**
-     * Builds up the <code>WHERE</code> scope for the query
+     * Adds a binding to the query
      *
-     * @return The where clause
+     * @param type    The type
+     * @param element The element
      */
-    private String buildScope() {
-        if (!this.scopes.isEmpty()) {
-            StringBuilder scopeBuilder = new StringBuilder();
-            scopeBuilder.append("WHERE ");
-            this.scopes.forEach(s -> scopeBuilder.append(s.getQuery()).append(" AND "));
-
-            String scope = scopeBuilder.toString();
-            return scope.substring(0, scope.length() - 4);
-        } else {
-            return "";
-        }
+    private void addBinding(Binding type, QueryElement element) {
+        ArrayList<QueryElement> elements = this.queryBindings
+            .computeIfAbsent(type, k -> new ArrayList<>());
+        elements.add(element);
     }
 }
