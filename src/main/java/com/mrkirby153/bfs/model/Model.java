@@ -7,11 +7,12 @@ import com.mrkirby153.bfs.annotations.Table;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Stream;
 
 /**
  * A model in the database
@@ -22,7 +23,14 @@ public class Model {
      * The connection factory used for the database
      */
     private static ConnectionFactory connectionFactory;
-
+    /**
+     * If the model should automatically set <code>created_at</code> and <code>updated_at</code> fields
+     */
+    protected boolean timestamps = true;
+    @Column("created_at")
+    public Timestamp createdAt;
+    @Column("updated_at")
+    public Timestamp updatedAt;
 
     /**
      * Sets the connection factory used globally
@@ -113,6 +121,19 @@ public class Model {
     }
 
     /**
+     * Updates the timestamps of this model
+     */
+    private void updateTimestamps() {
+        if(!timestamps)
+            return;
+
+        if (this.createdAt == null) {
+            this.createdAt = new Timestamp(System.currentTimeMillis());
+        }
+        this.updatedAt = new Timestamp(System.currentTimeMillis());
+    }
+
+    /**
      * Gets the name of the field's column
      *
      * @param field The field
@@ -134,7 +155,12 @@ public class Model {
      */
     private List<Field> getAccessibleFields() {
         ArrayList<Field> fields = new ArrayList<>();
-        Stream.of(this.getClass().getDeclaredFields()).forEach(field -> {
+
+        ArrayList<Field> allFields = new ArrayList<>();
+        allFields.addAll(Arrays.asList(this.getClass().getFields()));
+        allFields.addAll(Arrays.asList(this.getClass().getDeclaredFields()));
+
+       allFields.forEach(field -> {
             if (!field.isAccessible()) {
                 field.setAccessible(true);
             }
