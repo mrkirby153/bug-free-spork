@@ -2,6 +2,8 @@ package com.mrkirby153.bfs.model;
 
 import com.mrkirby153.bfs.ConnectionFactory;
 import com.mrkirby153.bfs.annotations.Column;
+import com.mrkirby153.bfs.annotations.PrimaryKey;
+import com.mrkirby153.bfs.annotations.Table;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -70,6 +72,44 @@ public class Model {
                 e.printStackTrace();
             }
         });
+    }
+
+    /**
+     * Gets the model's primary key
+     *
+     * @return The primary key or "id" if no field has the {@link PrimaryKey} annotation
+     */
+    public String getPrimaryKey() {
+        String key = null;
+        for (Field f : getAccessibleFields()) {
+            if (f.isAnnotationPresent(PrimaryKey.class)) {
+                if (key == null) {
+                    key = getColumnName(f);
+                } else {
+                    throw new IllegalArgumentException(String
+                        .format("The model %s has more than one primary key!",
+                            this.getClass().getName()));
+                }
+            }
+        }
+        if (key == null) {
+            return "id";
+        } else {
+            return key;
+        }
+    }
+
+
+    /**
+     * Gets the model's table in the database
+     *
+     * @return The table of the model
+     */
+    public String getTable() {
+        if (!this.getClass().isAnnotationPresent(Table.class)) {
+            throw new IllegalArgumentException("The model %s does not have an @Table annotation!");
+        }
+        return this.getClass().getAnnotation(Table.class).value();
     }
 
     /**
