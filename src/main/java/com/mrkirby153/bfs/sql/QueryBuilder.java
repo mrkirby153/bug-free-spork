@@ -1,10 +1,16 @@
 package com.mrkirby153.bfs.sql;
 
+import com.mrkirby153.bfs.ConnectionFactory;
 import com.mrkirby153.bfs.sql.elements.GenericElement;
 import com.mrkirby153.bfs.sql.elements.OrderElement;
+import com.mrkirby153.bfs.sql.elements.Pair;
 import com.mrkirby153.bfs.sql.grammars.Grammar;
 import com.mrkirby153.bfs.sql.grammars.MySqlGrammar;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -18,7 +24,7 @@ public class QueryBuilder {
         "&", "|", "^", "<<", ">>", "rlike", "regexp", "not regexp", "~", "~*", "!~*", "similar to",
         "not similar to", "not ilike", "~~*", "!~~*"
     };
-
+    public static ConnectionFactory connectionFactory = null;
     /**
      * The table to execute the query on
      */
@@ -38,8 +44,12 @@ public class QueryBuilder {
 
     private Grammar grammar;
 
-    public QueryBuilder(){
+    public QueryBuilder() {
         this.grammar = new MySqlGrammar();
+    }
+
+    public static String[] getOperators() {
+        return operators;
     }
 
     public QueryBuilder select(String... columns) {
@@ -61,17 +71,39 @@ public class QueryBuilder {
         return this;
     }
 
-    public QueryBuilder orderBy(String column, String direction){
+    public QueryBuilder orderBy(String column, String direction) {
         this.orders.add(new OrderElement(column, direction));
         return this;
     }
 
-    public String toSql(){
-        return this.grammar.compileSelect(this);
+    public int update(Pair... data) {
+        String query = this.grammar.compileUpdate(this, data);
+        try (Connection con = connectionFactory.getConnection()) {
+            PreparedStatement statement = con.prepareStatement(query);
+            grammar.bindUpdate(this, statement, data);
+            return statement.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return -1;
     }
 
-    public static String[] getOperators() {
-        return operators;
+    public ResultSet get() {
+        String query = this.grammar.compileSelect(this);
+        Connection con = connectionFactory.getConnection();
+        PreparedStatement statement = null;
+        try {
+            statement = con.prepareStatement(query);
+            grammar.bindSelect(this, statement);
+            return statement.executeQuery();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public String toSql() {
+        return this.grammar.compileSelect(this);
     }
 
     public String getTable() {

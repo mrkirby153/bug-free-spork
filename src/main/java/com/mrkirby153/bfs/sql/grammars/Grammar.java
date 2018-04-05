@@ -1,6 +1,7 @@
 package com.mrkirby153.bfs.sql.grammars;
 
 import com.mrkirby153.bfs.sql.QueryBuilder;
+import com.mrkirby153.bfs.sql.elements.Pair;
 
 import java.sql.PreparedStatement;
 
@@ -20,5 +21,17 @@ public interface Grammar {
      *
      * @param statement The statement to bind into
      */
-    void bindSelect(PreparedStatement statement);
+    void bindSelect(QueryBuilder builder, PreparedStatement statement);
+
+
+    /**
+     * Compiles an update to the statement
+     *
+     * @param builder The builder
+     *
+     * @return The compiled update prepared statement
+     */
+    String compileUpdate(QueryBuilder builder, Pair...pairs);
+
+    void bindUpdate(QueryBuilder builder, PreparedStatement statement, Pair...pairs);
 }
