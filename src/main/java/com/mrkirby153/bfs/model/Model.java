@@ -165,7 +165,7 @@ public class Model {
                 field.setAccessible(true);
             }
 
-            if (Modifier.isTransient(field.getModifiers())) {
+            if (Modifier.isTransient(field.getModifiers()) || Modifier.isFinal(field.getModifiers())) {
                 return;
             }
             fields.add(field);

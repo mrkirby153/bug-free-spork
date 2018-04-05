@@ -15,6 +15,10 @@ public class GenericElement implements QueryElement {
 
     private List<Object> objects = new ArrayList<>();
 
+    public GenericElement(String query){
+        this.query = query;
+    }
+
     public GenericElement(String query, Object... objects) {
         this.query = query;
         this.objects.addAll(Arrays.asList(objects));

@@ -22,11 +22,16 @@ public class WhereElement implements QueryElement {
 
     @Override
     public String getQuery() {
-        return String.format("WHERE `%s` %s ?", this.field, this.operation);
+        return String.format("`%s` %s ?", this.field, this.operation);
     }
 
     @Override
     public List<Object> getBindings() {
         return Collections.singletonList(this.object);
+    }
+
+    @Override
+    public int priority() {
+        return  0;
     }
 }
