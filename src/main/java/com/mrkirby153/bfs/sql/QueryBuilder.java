@@ -1,154 +1,96 @@
 package com.mrkirby153.bfs.sql;
 
-import com.mrkirby153.bfs.model.Model;
 import com.mrkirby153.bfs.sql.elements.GenericElement;
+import com.mrkirby153.bfs.sql.elements.OrderElement;
+import com.mrkirby153.bfs.sql.grammars.Grammar;
+import com.mrkirby153.bfs.sql.grammars.MySqlGrammar;
 
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Arrays;
 
 /**
  * A query builder for translating model operations into SQL queries
  */
-public class QueryBuilder<T extends Model> {
+public class QueryBuilder {
 
-    private Class<T> modelClass;
-
-    private T modelInstance;
-
-    private HashMap<Binding, ArrayList<QueryElement>> queryBindings = new HashMap<>();
-
-    public QueryBuilder(Class<T> clazz) {
-        this.modelClass = clazz;
-        try {
-            this.modelInstance = clazz.newInstance();
-        } catch (InstantiationException | IllegalAccessException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public QueryBuilder(T instance) {
-        this.modelInstance = instance;
-        this.modelClass = (Class<T>) instance.getClass();
-    }
+    private static final String[] operators = new String[]{
+        "=", "<", ">", "<=", ">=", "<>", "!=", "<=>", "like", "like binary", "not like", "ilike",
+        "&", "|", "^", "<<", ">>", "rlike", "regexp", "not regexp", "~", "~*", "!~*", "similar to",
+        "not similar to", "not ilike", "~~*", "!~~*"
+    };
 
     /**
-     * Adds a <code>WHERE</code> scope to the query
-     *
-     * @param column The column
-     * @param object The value to compare
-     *
-     * @return The query builder
+     * The table to execute the query on
      */
-    public QueryBuilder where(String column, Object object) {
-        return this.where(column, "=", object);
-    }
+    private String table;
 
     /**
-     * Adds a <code>WHERE</code> scope to the query
-     *
-     * @param column The column
-     * @param test   The logical test
-     * @param object The object to compare
-     *
-     * @return The query builder
+     * The where clauses to use
      */
-    public QueryBuilder where(String column, String test, Object object) {
-        addBinding(Binding.WHERE, new GenericElement(String.format("%s %s ?", column, test)));
+    private ArrayList<GenericElement> wheres = new ArrayList<>();
+
+    /**
+     * A list of columns to return
+     */
+    private String[] columns = new String[0];
+
+    private ArrayList<OrderElement> orders = new ArrayList<>();
+
+    private Grammar grammar;
+
+    public QueryBuilder(){
+        this.grammar = new MySqlGrammar();
+    }
+
+    public QueryBuilder select(String... columns) {
+        this.columns = columns;
         return this;
     }
 
-    /**
-     * Sets the table to use in this query
-     *
-     * @param table The table to use
-     *
-     * @return The builder
-     */
-    public QueryBuilder table(String table) {
-        addBinding(Binding.FROM, new GenericElement(String.format("`%s`", table)));
+    public QueryBuilder from(String table) {
+        this.table = table;
         return this;
     }
 
-    /**
-     * Constructs the query
-     *
-     * @return The query
-     */
-    public String buildQuery() {
-        StringBuilder sb = new StringBuilder();
-        for (Binding b : Binding.values()) {
-            ArrayList<QueryElement> el = this.queryBindings.get(b);
-            StringBuilder s = new StringBuilder();
-            if (el == null) {
-                continue;
-            }
-            el.forEach(e -> {
-                s.append(b.getPrefix());
-                s.append(" ");
-                s.append(e.getQuery());
-                s.append(" ");
-            });
-            String builtString = s.toString();
-
-            // Remove the first boolean operator
-            if (b == Binding.WHERE) {
-                builtString = builtString.replaceFirst("AND\\s?", "");
-            }
-            sb.append(builtString);
+    public QueryBuilder where(String column, String operator, Object value) {
+        if (!Arrays.asList(operators).contains(operator.toLowerCase())) {
+            throw new IllegalArgumentException("The operator " + operator + " is not valid!");
         }
-        return sb.toString();
-    }
-
-    /**
-     * Selects the columns to be used
-     *
-     * @param columns The columns to use
-     *
-     * @return The query builder
-     */
-    public QueryBuilder columns(String... columns) {
-        // Join the columns
-        StringBuilder joinedColsBuilder = new StringBuilder();
-        for (String s : columns) {
-            joinedColsBuilder.append(s).append(", ");
-        }
-        String joinedCols = joinedColsBuilder.toString();
-
-        addBinding(Binding.SELECT,
-            new GenericElement("(" + joinedCols.substring(0, joinedCols.length() - 2) + ")"));
+        GenericElement e = new GenericElement("`" + column + "` " + operator + " ?", value);
+        this.wheres.add(e);
         return this;
     }
 
-    /**
-     * Bind the objects to the query
-     *
-     * @param statement The statement to bind the objects to
-     *
-     * @throws SQLException If an exception is thrown
-     */
-    private void bindObjects(PreparedStatement statement) throws SQLException {
-        int index = 1;
-        for (Map.Entry<Binding, ArrayList<QueryElement>> e : this.queryBindings.entrySet()) {
-            for (QueryElement el : e.getValue()) {
-                for (Object o : el.getBindings()) {
-                    statement.setObject(index++, o);
-                }
-            }
-        }
+    public QueryBuilder orderBy(String column, String direction){
+        this.orders.add(new OrderElement(column, direction));
+        return this;
     }
 
-    /**
-     * Adds a binding to the query
-     *
-     * @param type    The type
-     * @param element The element
-     */
-    private void addBinding(Binding type, QueryElement element) {
-        ArrayList<QueryElement> elements = this.queryBindings
-            .computeIfAbsent(type, k -> new ArrayList<>());
-        elements.add(element);
+    public String toSql(){
+        return this.grammar.compileSelect(this);
+    }
+
+    public static String[] getOperators() {
+        return operators;
+    }
+
+    public String getTable() {
+        return table;
+    }
+
+    public ArrayList<GenericElement> getWheres() {
+        return wheres;
+    }
+
+    public String[] getColumns() {
+        return columns;
+    }
+
+    public Grammar getGrammar() {
+        return grammar;
+    }
+
+    public ArrayList<OrderElement> getOrders() {
+        return orders;
     }
 }

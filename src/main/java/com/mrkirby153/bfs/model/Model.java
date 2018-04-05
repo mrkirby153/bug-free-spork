@@ -23,14 +23,23 @@ public class Model {
      * The connection factory used for the database
      */
     private static ConnectionFactory connectionFactory;
-    /**
-     * If the model should automatically set <code>created_at</code> and <code>updated_at</code> fields
-     */
-    protected boolean timestamps = true;
     @Column("created_at")
     public Timestamp createdAt;
     @Column("updated_at")
     public Timestamp updatedAt;
+    /**
+     * If the model should automatically set <code>created_at</code> and <code>updated_at</code> fields
+     */
+    protected boolean timestamps = true;
+
+    /**
+     * Gets the global connection factory
+     *
+     * @return The connection factory
+     */
+    public static ConnectionFactory getConnectionFactory() {
+        return connectionFactory;
+    }
 
     /**
      * Sets the connection factory used globally
@@ -124,8 +133,9 @@ public class Model {
      * Updates the timestamps of this model
      */
     private void updateTimestamps() {
-        if(!timestamps)
+        if (!timestamps) {
             return;
+        }
 
         if (this.createdAt == null) {
             this.createdAt = new Timestamp(System.currentTimeMillis());
@@ -160,12 +170,13 @@ public class Model {
         allFields.addAll(Arrays.asList(this.getClass().getFields()));
         allFields.addAll(Arrays.asList(this.getClass().getDeclaredFields()));
 
-       allFields.forEach(field -> {
+        allFields.forEach(field -> {
             if (!field.isAccessible()) {
                 field.setAccessible(true);
             }
 
-            if (Modifier.isTransient(field.getModifiers()) || Modifier.isFinal(field.getModifiers())) {
+            if (Modifier.isTransient(field.getModifiers()) || Modifier
+                .isFinal(field.getModifiers())) {
                 return;
             }
             fields.add(field);
