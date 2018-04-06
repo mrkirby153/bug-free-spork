@@ -16,9 +16,24 @@ public class JoinElement {
         this.type = type;
     }
 
-    public String getSql() {
-        return this.type.toString() + " JOIN " + this.table + " ON " + this.first + " "
-            + this.operation + " " + this.second;
+    public String getTable() {
+        return table;
+    }
+
+    public String getFirst() {
+        return first;
+    }
+
+    public String getOperation() {
+        return operation;
+    }
+
+    public String getSecond() {
+        return second;
+    }
+
+    public Type getType() {
+        return type;
     }
 
     public enum Type {

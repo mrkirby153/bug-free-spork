@@ -15,8 +15,12 @@ public class WhereElement {
         this.object = object;
     }
 
-    public String query(){
-        return String.format("`%s` %s ?", this.field, this.operation);
+    public String getOperation() {
+        return operation;
+    }
+
+    public String getField() {
+        return field;
     }
 
     public Object getBinding(){

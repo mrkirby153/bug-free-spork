@@ -182,7 +182,10 @@ public class MySqlGrammar implements Grammar {
     private String compileJoins(QueryBuilder builder) {
         StringBuilder joins = new StringBuilder();
         builder.getJoins().forEach(join -> {
-            joins.append(join.getSql()).append(" ");
+            joins.append(join.getType().toString()).append(" JOIN ").append(join.getTable())
+                .append(" ON ");
+            joins.append(join.getFirst()).append(" ").append(join.getOperation()).append(" ")
+                .append(join.getSecond());
         });
         return joins.toString().trim();
     }
@@ -214,7 +217,8 @@ public class MySqlGrammar implements Grammar {
         StringBuilder s = new StringBuilder();
         for (WhereElement g : e) {
             s.append("AND ");
-            s.append(g.query());
+            s.append("`");
+            s.append(g.getField()).append("` ").append(g.getOperation()).append(" ? ");
         }
         return s.toString();
     }
