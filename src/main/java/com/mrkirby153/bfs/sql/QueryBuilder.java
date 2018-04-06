@@ -102,6 +102,18 @@ public class QueryBuilder {
         return null;
     }
 
+    public boolean delete() {
+        String query = this.grammar.compileDelete(this);
+        try (Connection con = connectionFactory.getConnection()) {
+            PreparedStatement ps = con.prepareStatement(query);
+            this.grammar.bindDelete(this, ps);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
     public String toSql() {
         return this.grammar.compileSelect(this);
     }

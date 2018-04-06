@@ -64,6 +64,17 @@ public class MySqlGrammar implements Grammar {
         index = bindWheres(builder, statement, index);
     }
 
+    @Override
+    public String compileDelete(QueryBuilder builder) {
+        String table = "`" + builder.getTable() + "`";
+        return "DELETE FROM " + table + " " + this.compileWheres(builder);
+    }
+
+    @Override
+    public void bindDelete(QueryBuilder builder, PreparedStatement statement) {
+        bindWheres(builder, statement, 1);
+    }
+
     private String compileComponents(QueryBuilder builder) {
         StringBuilder query = new StringBuilder();
         for (String s : this.components) {

@@ -34,4 +34,9 @@ public interface Grammar {
     String compileUpdate(QueryBuilder builder, Pair...pairs);
 
     void bindUpdate(QueryBuilder builder, PreparedStatement statement, Pair...pairs);
+
+
+    String compileDelete(QueryBuilder builder);
+
+    void bindDelete(QueryBuilder builder, PreparedStatement statement);
 }
