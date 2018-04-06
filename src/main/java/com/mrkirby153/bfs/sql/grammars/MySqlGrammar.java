@@ -127,15 +127,18 @@ public class MySqlGrammar implements Grammar {
             String methodName = "compile" + uppercaseFirst(s);
             try {
                 Method m = this.getClass().getDeclaredMethod(methodName, QueryBuilder.class);
-                query.append(m.invoke(this, builder));
-                query.append(" ");
+                String result = (String) m.invoke(this, builder);
+                if(!result.isEmpty()) {
+                    query.append(result);
+                    query.append(" ");
+                }
             } catch (NoSuchMethodException e) {
                 // Ignore
             } catch (IllegalAccessException | InvocationTargetException e) {
                 e.printStackTrace();
             }
         }
-        return query.toString();
+        return query.toString().trim();
     }
 
     private String compileColumns(QueryBuilder builder) {
@@ -154,14 +157,16 @@ public class MySqlGrammar implements Grammar {
                 }
             }
         }
-        return s.toString();
+        return s.toString().trim();
     }
 
     private String compileFrom(QueryBuilder builder) {
-        return "from `" + builder.getTable() + "`";
+        return "FROM `" + builder.getTable() + "`";
     }
 
     private String compileWheres(QueryBuilder builder) {
+        if(builder.getWheres().isEmpty())
+            return "";
         return "WHERE " + appendWheres(builder.getWheres()).replaceFirst("AND\\s?", "");
     }
 
