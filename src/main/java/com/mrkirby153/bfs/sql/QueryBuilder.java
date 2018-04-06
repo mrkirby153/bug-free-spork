@@ -58,6 +58,10 @@ public class QueryBuilder {
         this.grammar = new MySqlGrammar();
     }
 
+    public QueryBuilder(Grammar grammar){
+        this.grammar = grammar;
+    }
+
     public static String[] getOperators() {
         return operators;
     }
