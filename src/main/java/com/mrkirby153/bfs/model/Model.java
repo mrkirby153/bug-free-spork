@@ -3,6 +3,7 @@ package com.mrkirby153.bfs.model;
 import com.mrkirby153.bfs.annotations.Column;
 import com.mrkirby153.bfs.annotations.PrimaryKey;
 import com.mrkirby153.bfs.annotations.Table;
+import com.mrkirby153.bfs.sql.DbRow;
 import com.mrkirby153.bfs.sql.QueryBuilder;
 import com.mrkirby153.bfs.sql.elements.Pair;
 
@@ -85,18 +86,13 @@ public class Model {
             for (ModelOption option : pairs) {
                 builder.where(option.getColumn(), option.getOperator(), option.getData());
             }
-            ResultSet rs = builder.get();
-            while (rs.next()) {
-                HashMap<String, Object> data = new HashMap<>();
-                for (String column : instance.getColumnData().keySet()) {
-                    data.put(column, rs.getObject(column));
-                }
+            for (DbRow row : builder.get()) {
                 T newInstance = modelClass.newInstance();
-                newInstance.setData(data);
+                newInstance.setData(row);
                 list.add(newInstance);
             }
             return list;
-        } catch (InstantiationException | IllegalAccessException | SQLException e) {
+        } catch (InstantiationException | IllegalAccessException e) {
             e.printStackTrace();
         }
         return new ArrayList<>();
@@ -247,8 +243,8 @@ public class Model {
     public void create() {
         this.updateTimestamps();
         Pair[] data = getDataAsPairs().toArray(new Pair[0]);
-        if(this.incrementing) {
-           long generated =  new QueryBuilder().table(this.getTable()).insertWithGenerated(data);
+        if (this.incrementing) {
+            long generated = new QueryBuilder().table(this.getTable()).insertWithGenerated(data);
             HashMap<String, Object> d = new HashMap<>();
             d.put(getPrimaryKey(), generated);
             setData(d);
