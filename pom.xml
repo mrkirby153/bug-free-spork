@@ -17,6 +17,11 @@
           <target>1.8</target>
         </configuration>
       </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <version>3.0.0</version>
+      </plugin>
     </plugins>
   </build>
 
@@ -32,4 +37,17 @@
       <version>23.6-jre</version>
     </dependency>
   </dependencies>
+
+  <distributionManagement>
+    <repository>
+      <id>mrkirby153</id>
+      <name>mrkirby153 releases</name>
+      <url>https://repo.mrkirby153.com/repository/maven-releases/</url>
+    </repository>
+    <snapshotRepository>
+      <id>mrkirby153</id>
+      <name>mrkirby513 snapshots</name>
+      <url>https://repo.mrkirby153.com/repository/maven-snapshots/</url>
+    </snapshotRepository>
+  </distributionManagement>
 </project>
