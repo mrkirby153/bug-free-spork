@@ -171,6 +171,30 @@ public class MySqlGrammar implements Grammar {
         }
     }
 
+    private String compileJoins(QueryBuilder builder) {
+        StringBuilder joins = new StringBuilder();
+        builder.getJoins().forEach(join -> {
+            joins.append(join.getSql()).append(" ");
+        });
+        return joins.toString().trim();
+    }
+
+    private String compileLimit(QueryBuilder builder) {
+        if (builder.getLimit() != null) {
+            return "LIMIT " + builder.getLimit();
+        } else {
+            return "";
+        }
+    }
+
+    private String compileOffset(QueryBuilder builder) {
+        if (builder.getOffset() != null) {
+            return "OFFSET " + builder.getOffset();
+        } else {
+            return "";
+        }
+    }
+
     private String appendWheres(ArrayList<WhereElement> e) {
         StringBuilder s = new StringBuilder();
         for (WhereElement g : e) {

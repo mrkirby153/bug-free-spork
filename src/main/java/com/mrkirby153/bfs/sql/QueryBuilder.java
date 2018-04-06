@@ -1,6 +1,8 @@
 package com.mrkirby153.bfs.sql;
 
 import com.mrkirby153.bfs.ConnectionFactory;
+import com.mrkirby153.bfs.sql.elements.JoinElement;
+import com.mrkirby153.bfs.sql.elements.JoinElement.Type;
 import com.mrkirby153.bfs.sql.elements.OrderElement;
 import com.mrkirby153.bfs.sql.elements.Pair;
 import com.mrkirby153.bfs.sql.elements.WhereElement;
@@ -42,6 +44,11 @@ public class QueryBuilder {
     private String[] columns = new String[0];
 
     private ArrayList<OrderElement> orders = new ArrayList<>();
+    private ArrayList<JoinElement> joins = new ArrayList<>();
+
+    private Long limit = null;
+
+    private Long offset = null;
 
     private Grammar grammar;
 
@@ -68,6 +75,18 @@ public class QueryBuilder {
         return this;
     }
 
+    public ArrayList<JoinElement> getJoins() {
+        return joins;
+    }
+
+    public Long getLimit() {
+        return limit;
+    }
+
+    public Long getOffset() {
+        return offset;
+    }
+
     public QueryBuilder where(String column, String operator, Object value) {
         if (!Arrays.asList(operators).contains(operator.toLowerCase())) {
             throw new IllegalArgumentException("The operator " + operator + " is not valid!");
@@ -79,6 +98,16 @@ public class QueryBuilder {
 
     public QueryBuilder orderBy(String column, String direction) {
         this.orders.add(new OrderElement(column, direction));
+        return this;
+    }
+
+    public QueryBuilder limit(long amount) {
+        this.limit = amount;
+        return this;
+    }
+
+    public QueryBuilder offset(long amount) {
+        this.offset = amount;
         return this;
     }
 
@@ -161,6 +190,30 @@ public class QueryBuilder {
             e.printStackTrace();
         }
         return -1;
+    }
+
+    public QueryBuilder join(Type type, String table, String first, String operator, String second) {
+        if (!Arrays.asList(operators).contains(operator)) {
+            throw new IllegalArgumentException("The operator '" + operator + "' was not found!");
+        }
+        this.joins.add(new JoinElement(table, first, operator, second, type));
+        return this;
+    }
+
+    public QueryBuilder leftJoin(String table, String first, String operator, String second) {
+        return this.join(Type.LEFT, table, first, operator, second);
+    }
+
+    public QueryBuilder rightJoin(String table, String first, String operator, String second) {
+        return this.join(Type.RIGHT, table, first, operator, second);
+    }
+
+    public QueryBuilder outerJoin(String table, String first, String operator, String second) {
+        return this.join(Type.OUTER, table, first, operator, second);
+    }
+
+    public QueryBuilder innerJoin(String table, String first, String operator, String second) {
+        return this.join(Type.INNER, table, first, operator, second);
     }
 
     public String toSql() {
