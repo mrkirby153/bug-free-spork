@@ -7,5 +7,10 @@ import java.sql.Connection;
  */
 public interface ConnectionFactory {
 
+    /**
+     * Gets an SQL connection
+     *
+     * @return The SQL connection
+     */
     Connection getConnection();
 }

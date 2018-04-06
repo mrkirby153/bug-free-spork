@@ -1,5 +1,8 @@
 package com.mrkirby153.bfs.sql.elements;
 
+/**
+ * A Join element in an SQL query
+ */
 public class JoinElement {
 
     private String table, first, operation, second;

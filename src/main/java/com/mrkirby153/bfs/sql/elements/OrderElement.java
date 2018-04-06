@@ -1,5 +1,8 @@
 package com.mrkirby153.bfs.sql.elements;
 
+/**
+ * An order element on the query
+ */
 public class OrderElement {
 
     private String column;
@@ -14,10 +17,20 @@ public class OrderElement {
         }
     }
 
+    /**
+     * Gets the column
+     *
+     * @return The column
+     */
     public String getColumn() {
         return column;
     }
 
+    /**
+     * Gets the direction to order
+     *
+     * @return The direction
+     */
     public String getDirection() {
         return direction;
     }

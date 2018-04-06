@@ -114,6 +114,13 @@ public class MySqlGrammar implements Grammar {
         }
     }
 
+    /**
+     * Compile the various components in a <code>SELECT</code> statement
+     *
+     * @param builder The builder to use
+     *
+     * @return The compiled sql
+     */
     private String compileComponents(QueryBuilder builder) {
         StringBuilder query = new StringBuilder();
         for (String s : this.components) {
@@ -196,6 +203,13 @@ public class MySqlGrammar implements Grammar {
         }
     }
 
+    /**
+     * Joins all the {@link WhereElement}s to string
+     *
+     * @param e The elements
+     *
+     * @return A string
+     */
     private String appendWheres(ArrayList<WhereElement> e) {
         StringBuilder s = new StringBuilder();
         for (WhereElement g : e) {
@@ -205,6 +219,15 @@ public class MySqlGrammar implements Grammar {
         return s.toString();
     }
 
+    /**
+     * Binds the where element data to the statement
+     *
+     * @param builder    The query builder
+     * @param statement  The statement
+     * @param startIndex The parameter start index in the query
+     *
+     * @return The end index
+     */
     private int bindWheres(QueryBuilder builder, PreparedStatement statement, int startIndex) {
         AtomicInteger a = new AtomicInteger(startIndex);
         builder.getWheres().forEach(w -> {
@@ -218,6 +241,13 @@ public class MySqlGrammar implements Grammar {
     }
 
 
+    /**
+     * Capitalizes the first char in a string
+     *
+     * @param s The string
+     *
+     * @return The string with the first letter capitalized
+     */
     private String uppercaseFirst(String s) {
         return Character.toUpperCase(s.charAt(0)) + s.substring(1);
     }
