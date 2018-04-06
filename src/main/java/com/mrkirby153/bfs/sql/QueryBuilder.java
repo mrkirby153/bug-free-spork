@@ -52,6 +52,8 @@ public class QueryBuilder {
 
     private Grammar grammar;
 
+    private boolean distinct = false;
+
     public QueryBuilder() {
         this.grammar = new MySqlGrammar();
     }
@@ -85,6 +87,10 @@ public class QueryBuilder {
 
     public Long getOffset() {
         return offset;
+    }
+
+    public boolean isDistinct() {
+        return distinct;
     }
 
     public QueryBuilder where(String column, String operator, Object value) {
@@ -214,6 +220,11 @@ public class QueryBuilder {
 
     public QueryBuilder innerJoin(String table, String first, String operator, String second) {
         return this.join(Type.INNER, table, first, operator, second);
+    }
+
+    public QueryBuilder distinct(){
+        this.distinct = true;
+        return this;
     }
 
     public String toSql() {

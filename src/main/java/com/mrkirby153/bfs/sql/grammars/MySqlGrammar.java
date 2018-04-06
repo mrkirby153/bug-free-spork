@@ -134,13 +134,14 @@ public class MySqlGrammar implements Grammar {
     private String compileColumns(QueryBuilder builder) {
         StringBuilder s = new StringBuilder();
         s.append("SELECT ");
+        if (builder.isDistinct()) {
+            s.append("DISTINCT ");
+        }
         if (builder.getColumns().length == 0) {
             s.append("*");
         } else {
             for (int i = 0; i < builder.getColumns().length; i++) {
-                s.append("'");
                 s.append(builder.getColumns()[i]);
-                s.append("'");
                 if (i + 1 < builder.getColumns().length) {
                     s.append(", ");
                 }
