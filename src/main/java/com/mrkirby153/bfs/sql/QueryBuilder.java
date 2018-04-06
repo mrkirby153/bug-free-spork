@@ -63,6 +63,11 @@ public class QueryBuilder {
         return this;
     }
 
+    public QueryBuilder table(String table) {
+        this.table = table;
+        return this;
+    }
+
     public QueryBuilder where(String column, String operator, Object value) {
         if (!Arrays.asList(operators).contains(operator.toLowerCase())) {
             throw new IllegalArgumentException("The operator " + operator + " is not valid!");
