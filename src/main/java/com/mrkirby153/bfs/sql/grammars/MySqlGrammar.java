@@ -85,6 +85,35 @@ public class MySqlGrammar implements Grammar {
         this.bindSelect(builder, statement);
     }
 
+    @Override
+    public String compileInsert(QueryBuilder builder, Pair... data) {
+        StringBuilder cols = new StringBuilder();
+        StringBuilder placeholders = new StringBuilder();
+        for (int i = 0; i < data.length; i++) {
+            cols.append("`").append(data[i].getColumn()).append("`");
+            placeholders.append("?");
+            if (i + 1 < data.length) {
+                cols.append(", ");
+                placeholders.append(", ");
+            }
+        }
+
+        return "INSERT INTO `" + builder.getTable() + "`(" + cols + ") VALUES (" + placeholders
+            + ")";
+    }
+
+    @Override
+    public void bindInsert(QueryBuilder builder, PreparedStatement statement, Pair... data) {
+        int index = 1;
+        for (Pair p : data) {
+            try {
+                statement.setObject(index++, p.getValue());
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
     private String compileComponents(QueryBuilder builder) {
         StringBuilder query = new StringBuilder();
         for (String s : this.components) {

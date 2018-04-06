@@ -31,9 +31,9 @@ public interface Grammar {
      *
      * @return The compiled update prepared statement
      */
-    String compileUpdate(QueryBuilder builder, Pair...pairs);
+    String compileUpdate(QueryBuilder builder, Pair... pairs);
 
-    void bindUpdate(QueryBuilder builder, PreparedStatement statement, Pair...pairs);
+    void bindUpdate(QueryBuilder builder, PreparedStatement statement, Pair... pairs);
 
 
     String compileDelete(QueryBuilder builder);
@@ -43,4 +43,8 @@ public interface Grammar {
     String compileExists(QueryBuilder builder);
 
     void bindExists(QueryBuilder builder, PreparedStatement statement);
+
+    String compileInsert(QueryBuilder builder, Pair... data);
+
+    void bindInsert(QueryBuilder builder, PreparedStatement statement, Pair... data);
 }

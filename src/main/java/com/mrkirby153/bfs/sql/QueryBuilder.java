@@ -11,6 +11,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -128,6 +129,33 @@ public class QueryBuilder {
             e.printStackTrace();
         }
         return false;
+    }
+
+    public void insert(Pair... data) {
+        String query = this.grammar.compileInsert(this, data);
+        try (Connection con = connectionFactory.getConnection()) {
+            PreparedStatement ps = con.prepareStatement(query);
+            this.grammar.bindInsert(this, ps, data);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public int insertWithGenerated(Pair... data) {
+        String query = this.grammar.compileInsert(this, data);
+        try (Connection con = connectionFactory.getConnection()) {
+            PreparedStatement ps = con.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
+            this.grammar.bindInsert(this, ps, data);
+            ps.executeUpdate();
+            ResultSet rs = ps.getGeneratedKeys();
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return -1;
     }
 
     public String toSql() {
