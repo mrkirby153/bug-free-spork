@@ -39,4 +39,8 @@ public interface Grammar {
     String compileDelete(QueryBuilder builder);
 
     void bindDelete(QueryBuilder builder, PreparedStatement statement);
+
+    String compileExists(QueryBuilder builder);
+
+    void bindExists(QueryBuilder builder, PreparedStatement statement);
 }

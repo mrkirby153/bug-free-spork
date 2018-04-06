@@ -75,6 +75,16 @@ public class MySqlGrammar implements Grammar {
         bindWheres(builder, statement, 1);
     }
 
+    @Override
+    public String compileExists(QueryBuilder builder) {
+        return "SELECT EXISTS(" + compileSelect(builder) + ") as `exists`";
+    }
+
+    @Override
+    public void bindExists(QueryBuilder builder, PreparedStatement statement) {
+        this.bindSelect(builder, statement);
+    }
+
     private String compileComponents(QueryBuilder builder) {
         StringBuilder query = new StringBuilder();
         for (String s : this.components) {

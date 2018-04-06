@@ -114,6 +114,22 @@ public class QueryBuilder {
         return false;
     }
 
+    public boolean exists() {
+        String query = this.grammar.compileExists(this);
+        try (Connection con = connectionFactory.getConnection()) {
+            PreparedStatement ps = con.prepareStatement(query);
+            this.grammar.bindExists(this, ps);
+
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return rs.getBoolean("exists");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
     public String toSql() {
         return this.grammar.compileSelect(this);
     }
