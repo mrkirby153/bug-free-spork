@@ -1,14 +1,9 @@
 package com.mrkirby153.bfs.sql.elements;
 
-import com.mrkirby153.bfs.sql.QueryElement;
-
-import java.util.Collections;
-import java.util.List;
-
 /**
  * A <code>WHERE</code> element in the query
  */
-public class WhereElement implements QueryElement {
+public class WhereElement {
 
     private String operation;
     private String field;
@@ -20,13 +15,11 @@ public class WhereElement implements QueryElement {
         this.object = object;
     }
 
-    @Override
-    public String getQuery() {
+    public String query(){
         return String.format("`%s` %s ?", this.field, this.operation);
     }
 
-    @Override
-    public List<Object> getBindings() {
-        return Collections.singletonList(this.object);
+    public Object getBinding(){
+        return this.object;
     }
 }

@@ -1,9 +1,9 @@
 package com.mrkirby153.bfs.sql;
 
 import com.mrkirby153.bfs.ConnectionFactory;
-import com.mrkirby153.bfs.sql.elements.GenericElement;
 import com.mrkirby153.bfs.sql.elements.OrderElement;
 import com.mrkirby153.bfs.sql.elements.Pair;
+import com.mrkirby153.bfs.sql.elements.WhereElement;
 import com.mrkirby153.bfs.sql.grammars.Grammar;
 import com.mrkirby153.bfs.sql.grammars.MySqlGrammar;
 
@@ -34,7 +34,7 @@ public class QueryBuilder {
     /**
      * The where clauses to use
      */
-    private ArrayList<GenericElement> wheres = new ArrayList<>();
+    private ArrayList<WhereElement> wheres = new ArrayList<>();
 
     /**
      * A list of columns to return
@@ -72,7 +72,7 @@ public class QueryBuilder {
         if (!Arrays.asList(operators).contains(operator.toLowerCase())) {
             throw new IllegalArgumentException("The operator " + operator + " is not valid!");
         }
-        GenericElement e = new GenericElement("`" + column + "` " + operator + " ?", value);
+        WhereElement e = new WhereElement(operator, column, value);
         this.wheres.add(e);
         return this;
     }
@@ -171,7 +171,7 @@ public class QueryBuilder {
         return table;
     }
 
-    public ArrayList<GenericElement> getWheres() {
+    public ArrayList<WhereElement> getWheres() {
         return wheres;
     }
 

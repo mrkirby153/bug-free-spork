@@ -1,8 +1,8 @@
 package com.mrkirby153.bfs.sql.grammars;
 
 import com.mrkirby153.bfs.sql.QueryBuilder;
-import com.mrkirby153.bfs.sql.elements.GenericElement;
 import com.mrkirby153.bfs.sql.elements.Pair;
+import com.mrkirby153.bfs.sql.elements.WhereElement;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -171,11 +171,11 @@ public class MySqlGrammar implements Grammar {
         }
     }
 
-    private String appendWheres(ArrayList<GenericElement> e) {
+    private String appendWheres(ArrayList<WhereElement> e) {
         StringBuilder s = new StringBuilder();
-        for (GenericElement g : e) {
+        for (WhereElement g : e) {
             s.append("AND ");
-            s.append(g.getQuery());
+            s.append(g.query());
         }
         return s.toString();
     }
@@ -183,13 +183,11 @@ public class MySqlGrammar implements Grammar {
     private int bindWheres(QueryBuilder builder, PreparedStatement statement, int startIndex) {
         AtomicInteger a = new AtomicInteger(startIndex);
         builder.getWheres().forEach(w -> {
-            w.getBindings().forEach(o -> {
-                try {
-                    statement.setObject(a.getAndIncrement(), o);
-                } catch (SQLException e) {
-                    e.printStackTrace();
-                }
-            });
+            try {
+                statement.setObject(a.getAndIncrement(), w.getBinding());
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
         });
         return a.get();
     }
