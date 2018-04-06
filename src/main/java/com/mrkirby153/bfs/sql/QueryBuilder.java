@@ -330,7 +330,7 @@ public class QueryBuilder {
      *
      * @return The primary key
      */
-    public int insertWithGenerated(Pair... data) {
+    public long insertWithGenerated(Pair... data) {
         String query = this.grammar.compileInsert(this, data);
         try (Connection con = connectionFactory.getConnection()) {
             PreparedStatement ps = con.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
@@ -338,7 +338,7 @@ public class QueryBuilder {
             ps.executeUpdate();
             ResultSet rs = ps.getGeneratedKeys();
             if (rs.next()) {
-                return rs.getInt(1);
+                return rs.getLong(1);
             }
         } catch (SQLException e) {
             e.printStackTrace();

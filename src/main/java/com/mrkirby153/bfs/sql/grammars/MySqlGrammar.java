@@ -44,10 +44,11 @@ public class MySqlGrammar implements Grammar {
         StringBuilder columnBuilder = new StringBuilder();
 
         for (Pair p : pairs) {
-            columnBuilder.append("`").append(p.getColumn()).append("` = ? ");
+            columnBuilder.append("`").append(p.getColumn()).append("` = ?, ");
         }
 
-        return "UPDATE " + table + " SET " + columnBuilder.toString() + this.compileWheres(builder);
+        String s = columnBuilder.toString();
+        return "UPDATE " + table + " SET " + s.substring(0, s.length()-2) + this.compileWheres(builder);
     }
 
     @Override

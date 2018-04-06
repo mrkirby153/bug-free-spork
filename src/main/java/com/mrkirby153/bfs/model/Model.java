@@ -4,6 +4,7 @@ import com.mrkirby153.bfs.annotations.Column;
 import com.mrkirby153.bfs.annotations.PrimaryKey;
 import com.mrkirby153.bfs.annotations.Table;
 import com.mrkirby153.bfs.sql.QueryBuilder;
+import com.mrkirby153.bfs.sql.elements.Pair;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -14,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -30,6 +32,13 @@ public class Model {
      */
     protected boolean timestamps = true;
 
+    protected boolean incrementing = true;
+
+    /**
+     * The old state of the model
+     */
+    private transient HashMap<String, Object> oldState = new HashMap<>();
+
     /**
      * Gets a list of all the models matching the query
      *
@@ -40,7 +49,8 @@ public class Model {
      *
      * @return A list of models matching the query or an empty array if none exist
      */
-    public static <T extends Model> List<T> get(Class<T> modelClass, String column, String operator, Object data) {
+    public static <T extends Model> List<T> get(Class<T> modelClass, String column, String operator,
+        Object data) {
         return get(modelClass, new ModelOption(column, operator, data));
     }
 
@@ -120,7 +130,7 @@ public class Model {
      *
      * @return The first element matching the query or null
      */
-    public static <T extends Model> T first(Class<T> modelClass, String column, Object data){
+    public static <T extends Model> T first(Class<T> modelClass, String column, Object data) {
         return first(modelClass, column, "=", data);
     }
 
@@ -185,6 +195,84 @@ public class Model {
     }
 
     /**
+     * Checks if the model is dirty
+     *
+     * @return True if the model is dirty
+     */
+    public boolean isDirty() {
+        for (Map.Entry<String, Object> e : this.getColumnData().entrySet()) {
+            Object old = this.oldState.get(e.getKey());
+            if (old == null || !old.equals(e.getValue())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Updates the model's previous state
+     */
+    private void updateState() {
+        this.oldState = this.getColumnData();
+    }
+
+    public void save() {
+        if (!this.isDirty()) {
+            return; // Don't bother saving if we're not dirty
+        }
+        boolean exists = new QueryBuilder().table(this.getTable())
+            .where(getPrimaryKey(), getColumnData().get(getPrimaryKey())).exists();
+
+        if (exists) {
+            this.update();
+        } else {
+            this.create();
+        }
+        this.updateState();
+    }
+
+    /**
+     * Updates the data in the database
+     */
+    public void update() {
+        this.updateTimestamps();
+        HashMap<String, Object> data = getColumnData();
+        new QueryBuilder().table(this.getTable()).where(getPrimaryKey(), data.get(getPrimaryKey()))
+            .update(getDataAsPairs().toArray(new Pair[0]));
+    }
+
+    /**
+     * Creates the model in the database
+     */
+    public void create() {
+        this.updateTimestamps();
+        Pair[] data = getDataAsPairs().toArray(new Pair[0]);
+        if(this.incrementing) {
+           long generated =  new QueryBuilder().table(this.getTable()).insertWithGenerated(data);
+            HashMap<String, Object> d = new HashMap<>();
+            d.put(getPrimaryKey(), generated);
+            setData(d);
+        } else {
+            new QueryBuilder().table(this.getTable()).insert(data);
+        }
+        this.updateState();
+    }
+
+
+    /**
+     * Gets the current data as an array of {@link Pair}
+     *
+     * @return The data
+     */
+    private ArrayList<Pair> getDataAsPairs() {
+        ArrayList<Pair> a = new ArrayList<>();
+        getColumnData().forEach((k, v) -> {
+            a.add(new Pair(k, v));
+        });
+        return a;
+    }
+
+    /**
      * Takes data retrieved from the database and sets it on the model
      *
      * @param data The data received from the database
@@ -238,7 +326,8 @@ public class Model {
      */
     public String getTable() {
         if (!this.getClass().isAnnotationPresent(Table.class)) {
-            throw new IllegalArgumentException(String.format("The model %s does not have an @Table annotation!", this.getClass()));
+            throw new IllegalArgumentException(
+                String.format("The model %s does not have an @Table annotation!", this.getClass()));
         }
         return this.getClass().getAnnotation(Table.class).value();
     }
