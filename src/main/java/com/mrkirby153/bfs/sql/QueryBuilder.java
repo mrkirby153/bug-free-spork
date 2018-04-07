@@ -8,6 +8,7 @@ import com.mrkirby153.bfs.sql.elements.Pair;
 import com.mrkirby153.bfs.sql.elements.WhereElement;
 import com.mrkirby153.bfs.sql.grammars.Grammar;
 import com.mrkirby153.bfs.sql.grammars.MySqlGrammar;
+import org.intellij.lang.annotations.Language;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -265,18 +266,32 @@ public class QueryBuilder {
             statement = con.prepareStatement(query);
             grammar.bindSelect(this, statement);
 
-            ArrayList<DbRow> data = new ArrayList<>();
             ResultSet rs = statement.executeQuery();
-            ResultSetMetaData md = rs.getMetaData();
-            while(rs.next()) {
-                DbRow row = new DbRow();
-                for (int i = 1; i <= md.getColumnCount(); i++) {
-                    String col = md.getColumnName(i);
-                    row.put(col, rs.getObject(col));
-                }
-                data.add(row);
+            return parse(rs);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    /**
+     * Executes raw SQL as a {@link PreparedStatement}
+     *
+     * @param sql  The raw SQL to execute
+     * @param data A list of bindings for the statement
+     *
+     * @return A list of {@link DbRow}s
+     */
+    public List<DbRow> raw(@Language("MySQL") String sql, Object... data) {
+        Connection con = connectionFactory.getConnection();
+        try {
+            PreparedStatement statement = con.prepareStatement(sql);
+            int index = 1;
+            for (Object o : data) {
+                statement.setObject(index++, o);
             }
-            return data;
+            ResultSet rs = statement.executeQuery();
+            return parse(rs);
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -498,5 +513,28 @@ public class QueryBuilder {
      */
     public ArrayList<OrderElement> getOrders() {
         return orders;
+    }
+
+    /**
+     * Parses a {@link ResultSet} into a collection of DbRows
+     *
+     * @param rs The Result Set
+     *
+     * @return The result set parsed as a list of {@link DbRow}s
+     *
+     * @throws SQLException If an exception occurrs
+     */
+    private List<DbRow> parse(ResultSet rs) throws SQLException {
+        ArrayList<DbRow> data = new ArrayList<>();
+        ResultSetMetaData md = rs.getMetaData();
+        while (rs.next()) {
+            DbRow row = new DbRow();
+            for (int i = 1; i <= md.getColumnCount(); i++) {
+                String col = md.getColumnName(i);
+                row.put(col, rs.getObject(col));
+            }
+            data.add(row);
+        }
+        return data;
     }
 }
