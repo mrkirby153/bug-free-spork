@@ -39,16 +39,17 @@ public class MySqlGrammar implements Grammar {
 
     @Override
     public String compileUpdate(QueryBuilder builder, Pair... pairs) {
-        String table = "`" + builder.getTable() + "` ";
+        String table = wrap(builder.getTable());
 
         StringBuilder columnBuilder = new StringBuilder();
 
         for (Pair p : pairs) {
-            columnBuilder.append("`").append(p.getColumn()).append("` = ?, ");
+            columnBuilder.append(wrap(p.getColumn())).append(" = ?, ");
         }
 
         String s = columnBuilder.toString();
-        return "UPDATE " + table + " SET " + s.substring(0, s.length()-2) + this.compileWheres(builder);
+        return "UPDATE " + table + " SET " + s.substring(0, s.length() - 2) + this
+            .compileWheres(builder);
     }
 
     @Override
@@ -67,7 +68,7 @@ public class MySqlGrammar implements Grammar {
 
     @Override
     public String compileDelete(QueryBuilder builder) {
-        String table = "`" + builder.getTable() + "`";
+        String table = wrap(builder.getTable());
         return "DELETE FROM " + table + " " + this.compileWheres(builder);
     }
 
@@ -91,7 +92,7 @@ public class MySqlGrammar implements Grammar {
         StringBuilder cols = new StringBuilder();
         StringBuilder placeholders = new StringBuilder();
         for (int i = 0; i < data.length; i++) {
-            cols.append("`").append(data[i].getColumn()).append("`");
+            cols.append(wrap(data[i].getColumn()));
             placeholders.append("?");
             if (i + 1 < data.length) {
                 cols.append(", ");
@@ -129,7 +130,7 @@ public class MySqlGrammar implements Grammar {
             try {
                 Method m = this.getClass().getDeclaredMethod(methodName, QueryBuilder.class);
                 String result = (String) m.invoke(this, builder);
-                if(!result.isEmpty()) {
+                if (!result.isEmpty()) {
                     query.append(result);
                     query.append(" ");
                 }
@@ -162,12 +163,13 @@ public class MySqlGrammar implements Grammar {
     }
 
     private String compileFrom(QueryBuilder builder) {
-        return "FROM `" + builder.getTable() + "`";
+        return "FROM " + wrap(builder.getTable());
     }
 
     private String compileWheres(QueryBuilder builder) {
-        if(builder.getWheres().isEmpty())
+        if (builder.getWheres().isEmpty()) {
             return "";
+        }
         return "WHERE " + appendWheres(builder.getWheres()).replaceFirst("AND\\s?", "");
     }
 
@@ -223,8 +225,8 @@ public class MySqlGrammar implements Grammar {
         StringBuilder s = new StringBuilder();
         for (WhereElement g : e) {
             s.append("AND ");
-            s.append("`");
-            s.append(g.getField()).append("` ").append(g.getOperation()).append(" ? ");
+            s.append(wrap(g.getField())).append(" ");
+            s.append(g.getOperation()).append(" ? ");
         }
         return s.toString();
     }
@@ -260,5 +262,16 @@ public class MySqlGrammar implements Grammar {
      */
     private String uppercaseFirst(String s) {
         return Character.toUpperCase(s.charAt(0)) + s.substring(1);
+    }
+
+    /**
+     * Surrounds a string with `
+     *
+     * @param s The string
+     *
+     * @return The string wrapped with `
+     */
+    private String wrap(String s) {
+        return "`" + s + "`";
     }
 }
