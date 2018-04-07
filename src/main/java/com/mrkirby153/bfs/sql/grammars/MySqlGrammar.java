@@ -153,7 +153,19 @@ public class MySqlGrammar implements Grammar {
             s.append("*");
         } else {
             for (int i = 0; i < builder.getColumns().length; i++) {
-                s.append(builder.getColumns()[i]);
+                String col = builder.getColumns()[i];
+
+                String[] parts = col.split("\\.");
+                for (int j = 0; j < parts.length; j++) {
+                    if (parts[j].equalsIgnoreCase("*")) {
+                        s.append(parts[j]);
+                    } else {
+                        s.append(wrap(parts[j]));
+                    }
+                    if (j + 1 < parts.length) {
+                        s.append(".");
+                    }
+                }
                 if (i + 1 < builder.getColumns().length) {
                     s.append(", ");
                 }

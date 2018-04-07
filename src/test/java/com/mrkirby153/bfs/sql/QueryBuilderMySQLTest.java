@@ -72,7 +72,20 @@ public class QueryBuilderMySQLTest {
     public void testSelect() {
         QueryBuilder builder = new QueryBuilder().table("testing").select("one", "two");
         Assert.assertEquals(2, builder.getColumns().length);
-        Assert.assertEquals("SELECT one, two FROM `testing`", builder.toSql());
+        Assert.assertEquals("SELECT `one`, `two` FROM `testing`", builder.toSql());
+    }
+
+    @Test
+    public void testSelectTable(){
+        QueryBuilder builder = new QueryBuilder().table("testing").select("table.test");
+        Assert.assertEquals(1, builder.getColumns().length);
+        Assert.assertEquals("SELECT `table`.`test` FROM `testing`", builder.toSql());
+    }
+
+    @Test
+    public void testWithWildcard(){
+        QueryBuilder builder = new QueryBuilder().table("testing").select("table.*");
+        Assert.assertEquals("SELECT `table`.* FROM `testing`", builder.toSql());
     }
 
     @Test
