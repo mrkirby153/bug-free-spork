@@ -239,6 +239,17 @@ public class Model {
     }
 
     /**
+     * Gets a {@link ModelQueryBuilder} to perform advanced queries on the model
+     *
+     * @param modelClass The type of model to get
+     *
+     * @return A model query builder
+     */
+    public static <T extends Model> ModelQueryBuilder<T> query(Class<T> modelClass) {
+        return new ModelQueryBuilder<>(defaultGrammar, modelClass);
+    }
+
+    /**
      * Gets the column's data
      *
      * @return The model's data ready to be stored in the database
