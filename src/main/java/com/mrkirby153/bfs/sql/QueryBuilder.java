@@ -9,6 +9,8 @@ import com.mrkirby153.bfs.sql.elements.WhereElement;
 import com.mrkirby153.bfs.sql.grammars.Grammar;
 import com.mrkirby153.bfs.sql.grammars.MySqlGrammar;
 import org.intellij.lang.annotations.Language;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -25,12 +27,17 @@ import java.util.List;
  */
 public class QueryBuilder {
 
+    private static final Logger logger = LoggerFactory.getLogger("bfs-querybuilder");
+
     private static final String[] operators = new String[]{
         "=", "<", ">", "<=", ">=", "<>", "!=", "<=>", "like", "like binary", "not like", "ilike",
         "&", "|", "^", "<<", ">>", "rlike", "regexp", "not regexp", "~", "~*", "!~*", "similar to",
         "not similar to", "not ilike", "~~*", "!~~*"
     };
     public static ConnectionFactory connectionFactory = null;
+
+    public static boolean logQueries = false;
+
     /**
      * The table to execute the query on
      */
@@ -246,6 +253,9 @@ public class QueryBuilder {
         try (Connection con = connectionFactory.getConnection()) {
             PreparedStatement statement = con.prepareStatement(query);
             grammar.bindUpdate(this, statement, data);
+            if (logQueries) {
+                logger.debug("Executing UPDATE: " + statement);
+            }
             return statement.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -266,6 +276,9 @@ public class QueryBuilder {
             statement = con.prepareStatement(query);
             grammar.bindSelect(this, statement);
 
+            if (logQueries) {
+                logger.debug("Executing SELECT: " + statement);
+            }
             ResultSet rs = statement.executeQuery();
             return parse(rs);
         } catch (SQLException e) {
@@ -290,6 +303,9 @@ public class QueryBuilder {
             for (Object o : data) {
                 statement.setObject(index++, o);
             }
+            if (logQueries) {
+                logger.debug("Executing raw query: " + statement);
+            }
             ResultSet rs = statement.executeQuery();
             return parse(rs);
         } catch (SQLException e) {
@@ -308,6 +324,9 @@ public class QueryBuilder {
         try (Connection con = connectionFactory.getConnection()) {
             PreparedStatement ps = con.prepareStatement(query);
             this.grammar.bindDelete(this, ps);
+            if (logQueries) {
+                logger.debug("Executing DELETE: " + ps);
+            }
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();
@@ -326,6 +345,9 @@ public class QueryBuilder {
             PreparedStatement ps = con.prepareStatement(query);
             this.grammar.bindExists(this, ps);
 
+            if (logQueries) {
+                logger.debug("Executing EXISTS: " + ps);
+            }
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
                 return rs.getBoolean("exists");
@@ -346,6 +368,9 @@ public class QueryBuilder {
         try (Connection con = connectionFactory.getConnection()) {
             PreparedStatement ps = con.prepareStatement(query);
             this.grammar.bindInsert(this, ps, data);
+            if (logQueries) {
+                logger.debug("Executing INSERT: " + ps);
+            }
             ps.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -364,10 +389,17 @@ public class QueryBuilder {
         try (Connection con = connectionFactory.getConnection()) {
             PreparedStatement ps = con.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
             this.grammar.bindInsert(this, ps, data);
+            if (logQueries) {
+                logger.debug("Executing INSERT (with generated): " + ps);
+            }
             ps.executeUpdate();
             ResultSet rs = ps.getGeneratedKeys();
             if (rs.next()) {
-                return rs.getLong(1);
+                long generated = rs.getLong(1);
+                if (logQueries) {
+                    logger.debug("\t - Returned generated value " + generated);
+                }
+                return generated;
             }
         } catch (SQLException e) {
             e.printStackTrace();
