@@ -348,7 +348,7 @@ public class QueryBuilder {
             if (logQueries) {
                 logger.debug("Executing EXISTS: " + ps);
             }
-            try(ResultSet rs = ps.executeQuery()) {
+            try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     return rs.getBoolean("exists");
                 }
@@ -394,7 +394,7 @@ public class QueryBuilder {
                 logger.debug("Executing INSERT (with generated): " + ps);
             }
             ps.executeUpdate();
-            try(ResultSet rs = ps.getGeneratedKeys()) {
+            try (ResultSet rs = ps.getGeneratedKeys()) {
                 if (rs.next()) {
                     long generated = rs.getLong(1);
                     if (logQueries) {
@@ -564,7 +564,7 @@ public class QueryBuilder {
         while (rs.next()) {
             DbRow row = new DbRow();
             for (int i = 1; i <= md.getColumnCount(); i++) {
-                String col = md.getColumnName(i);
+                String col = md.getColumnLabel(i);
                 row.put(col, rs.getObject(col));
             }
             data.add(row);
