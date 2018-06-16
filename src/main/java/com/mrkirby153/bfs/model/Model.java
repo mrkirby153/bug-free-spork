@@ -1,5 +1,6 @@
 package com.mrkirby153.bfs.model;
 
+import com.mrkirby153.bfs.Tuple;
 import com.mrkirby153.bfs.annotations.Column;
 import com.mrkirby153.bfs.annotations.PrimaryKey;
 import com.mrkirby153.bfs.annotations.Table;
@@ -14,7 +15,12 @@ import java.lang.reflect.Modifier;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 /**
  * A model in the database
@@ -43,10 +49,11 @@ public class Model {
      * @param column     The column to query
      * @param operator   The comparison to perform
      * @param data       The data to check
+     *
      * @return A list of models matching the query or an empty array if none exist
      */
     public static <T extends Model> List<T> get(Class<T> modelClass, String column, String operator,
-                                                Object data) {
+        Object data) {
         return get(modelClass, new ModelOption(column, operator, data));
     }
 
@@ -65,6 +72,7 @@ public class Model {
      * @param modelClass The model class
      * @param column     The column to query
      * @param data       The data to check
+     *
      * @return A list of models matching the query or an empty array if none exist
      */
     public static <T extends Model> List<T> get(Class<T> modelClass, String column, Object data) {
@@ -76,6 +84,7 @@ public class Model {
      *
      * @param modelClass The model class
      * @param pairs      The comparisons to do
+     *
      * @return A list of models or an empty array if none exist
      */
     public static <T extends Model> List<T> get(Class<T> modelClass, ModelOption... pairs) {
@@ -101,16 +110,33 @@ public class Model {
     }
 
     /**
+     * Gets all the elements matching the query
+     *
+     * @param modelClass The model class
+     * @param tuples     The tuples (column/value pairs)
+     *
+     * @return A list of models or an empty array if none exist
+     */
+    public static <T extends Model> List<T> get(Class<T> modelClass, Tuple<String, ?>... tuples) {
+        List<ModelOption> options = new ArrayList<>();
+        for (Tuple<String, ?> t : tuples) {
+            options.add(new ModelOption(t.first, "=", t.second));
+        }
+        return get(modelClass, options.toArray(new ModelOption[0]));
+    }
+
+    /**
      * Gets the first element matching the query
      *
      * @param modelClass The model class
      * @param column     The column to query
      * @param operator   The comparison to perform
      * @param data       The data to check
+     *
      * @return The first element matching the query or null
      */
     public static <T extends Model> T first(Class<T> modelClass, String column, String operator,
-                                            Object data) {
+        Object data) {
         List<T> list = get(modelClass, column, operator, data);
         if (list.size() < 1) {
             return null;
@@ -124,6 +150,7 @@ public class Model {
      * @param modelClass The model class
      * @param column     The column to query
      * @param data       The data to check
+     *
      * @return The first element matching the query or null
      */
     public static <T extends Model> T first(Class<T> modelClass, String column, Object data) {
@@ -135,6 +162,7 @@ public class Model {
      *
      * @param modelClass The model class
      * @param pairs      The comparisons to do
+     *
      * @return The first element matching the query or null
      */
     public static <T extends Model> T first(Class<T> modelClass, ModelOption... pairs) {
@@ -146,10 +174,27 @@ public class Model {
     }
 
     /**
+     * Gets the first element matching the query
+     *
+     * @param modelClass The model class
+     * @param tuples     A list of tuples (Column/Value pairs)
+     *
+     * @return The first element matching the query, or null
+     */
+    public static <T extends Model> T first(Class<T> modelClass, Tuple<String, ?>... tuples) {
+        List<ModelOption> options = new ArrayList<>();
+        for (Tuple<String, ?> tuple : tuples) {
+            options.add(new ModelOption(tuple.first, "=", tuple.second));
+        }
+        return first(modelClass, options.toArray(new ModelOption[0]));
+    }
+
+    /**
      * Parses a {@link ResultSet} into a model
      *
      * @param clazz The class
      * @param rs    The result set
+     *
      * @return The model or null
      */
     public static <T extends Model> T parse(Class<T> clazz, ResultSet rs) {
@@ -215,7 +260,7 @@ public class Model {
             return; // Don't bother saving if we're not dirty
         }
         boolean exists = new QueryBuilder(defaultGrammar).table(this.getTable())
-                .where(getPrimaryKey(), getColumnData().get(getPrimaryKey())).exists();
+            .where(getPrimaryKey(), getColumnData().get(getPrimaryKey())).exists();
 
         if (exists) {
             this.update();
@@ -231,8 +276,9 @@ public class Model {
     public void update() {
         this.updateTimestamps();
         HashMap<String, Object> data = getColumnData();
-        new QueryBuilder(defaultGrammar).table(this.getTable()).where(getPrimaryKey(), data.get(getPrimaryKey()))
-                .update(getDataAsPairs().toArray(new Pair[0]));
+        new QueryBuilder(defaultGrammar).table(this.getTable())
+            .where(getPrimaryKey(), data.get(getPrimaryKey()))
+            .update(getDataAsPairs().toArray(new Pair[0]));
     }
 
     /**
@@ -242,7 +288,8 @@ public class Model {
         this.updateTimestamps();
         Pair[] data = getDataAsPairs().toArray(new Pair[0]);
         if (this.incrementing) {
-            long generated = new QueryBuilder(defaultGrammar).table(this.getTable()).insertWithGenerated(data);
+            long generated = new QueryBuilder(defaultGrammar).table(this.getTable())
+                .insertWithGenerated(data);
             HashMap<String, Object> d = new HashMap<>();
             d.put(getPrimaryKey(), generated);
             setData(d);
@@ -274,10 +321,10 @@ public class Model {
     public void setData(HashMap<String, Object> data) {
         data.forEach((column, d) -> {
             Optional<Field> fieldOptional = getAccessibleFields().stream()
-                    .filter(f -> getColumnName(f).equals(column)).findFirst();
+                .filter(f -> getColumnName(f).equals(column)).findFirst();
             if (!fieldOptional.isPresent()) {
                 throw new IllegalArgumentException(
-                        String.format("The column %s was not found", column));
+                    String.format("The column %s was not found", column));
             }
             Field f = fieldOptional.get();
             try {
@@ -301,8 +348,8 @@ public class Model {
                     key = getColumnName(f);
                 } else {
                     throw new IllegalArgumentException(String
-                            .format("The model %s has more than one primary key!",
-                                    this.getClass().getName()));
+                        .format("The model %s has more than one primary key!",
+                            this.getClass().getName()));
                 }
             }
         }
@@ -321,7 +368,7 @@ public class Model {
     public String getTable() {
         if (!this.getClass().isAnnotationPresent(Table.class)) {
             throw new IllegalArgumentException(
-                    String.format("The model %s does not have an @Table annotation!", this.getClass()));
+                String.format("The model %s does not have an @Table annotation!", this.getClass()));
         }
         return this.getClass().getAnnotation(Table.class).value();
     }
@@ -344,6 +391,7 @@ public class Model {
      * Gets the name of the field's column
      *
      * @param field The field
+     *
      * @return The column's name
      */
     private String getColumnName(Field field) {
@@ -371,7 +419,8 @@ public class Model {
                 field.setAccessible(true);
             }
 
-            if (Modifier.isTransient(field.getModifiers()) || Modifier.isFinal(field.getModifiers())) {
+            if (Modifier.isTransient(field.getModifiers()) || Modifier
+                .isFinal(field.getModifiers())) {
                 return;
             }
             fields.add(field);
