@@ -268,7 +268,7 @@ public class QueryBuilder {
      *
      * @return A list of {@link DbRow}
      */
-    public List<DbRow> get() {
+    public List<DbRow> query() {
         String query = this.grammar.compileSelect(this);
         try (Connection con = connectionFactory.getConnection();
             PreparedStatement statement = con.prepareStatement(query)) {

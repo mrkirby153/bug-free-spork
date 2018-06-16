@@ -99,7 +99,7 @@ public class Model {
             for (ModelOption option : pairs) {
                 builder.where(option.getColumn(), option.getOperator(), option.getData());
             }
-            for (DbRow row : builder.get()) {
+            for (DbRow row : builder.query()) {
                 T newInstance = modelClass.newInstance();
                 newInstance.setData(row);
                 list.add(newInstance);
@@ -109,6 +109,17 @@ public class Model {
             e.printStackTrace();
         }
         return new ArrayList<>();
+    }
+
+    /**
+     * Gets all the models in the database
+     *
+     * @param modelClass The model class
+     *
+     * @return A list of all models
+     */
+    public static <T extends Model> List<T> get(Class<T> modelClass) {
+        return get(modelClass, new ModelOption[0]);
     }
 
     /**
@@ -157,6 +168,17 @@ public class Model {
      */
     public static <T extends Model> T first(Class<T> modelClass, String column, Object data) {
         return first(modelClass, column, "=", data);
+    }
+
+    /**
+     * Gets the first model in the database
+     *
+     * @param modelClass The model class
+     *
+     * @return The first model
+     */
+    public static <T extends Model> T first(Class<T> modelClass) {
+        return first(modelClass, new ModelOption[0]);
     }
 
     /**
@@ -434,8 +456,10 @@ public class Model {
                 .isFinal(field.getModifiers())) {
                 return;
             }
-            if(!timestamps && (field.getName().equals("_created_at") || field.getName().equals("_updated_at")))
+            if (!timestamps && (field.getName().equals("_created_at") || field.getName()
+                .equals("_updated_at"))) {
                 return;
+            }
             fields.add(field);
         });
         return fields;
