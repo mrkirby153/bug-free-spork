@@ -299,6 +299,15 @@ public class Model {
         this.updateState();
     }
 
+    /**
+     * Deletes the model from the database
+     */
+    public void delete() {
+        new QueryBuilder(defaultGrammar).table(this.getTable())
+            .where(this.getPrimaryKey(), "=", this.getColumnData().get(this.getPrimaryKey()))
+            .delete();
+    }
+
 
     /**
      * Gets the current data as an array of {@link Pair}
