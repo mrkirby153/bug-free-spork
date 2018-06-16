@@ -48,7 +48,7 @@ public class MySqlGrammar implements Grammar {
         }
 
         String s = columnBuilder.toString();
-        return "UPDATE " + table + " SET " + s.substring(0, s.length() - 2) + this
+        return "UPDATE " + table + " SET " + s.substring(0, s.length() - 2) + " " + this
             .compileWheres(builder);
     }
 
