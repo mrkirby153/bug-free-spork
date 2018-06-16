@@ -28,12 +28,14 @@ import java.util.Optional;
 public class Model {
 
     private static Grammar defaultGrammar = new MySqlGrammar();
+
+    // Internal timestamp fields
     @Column("created_at")
-    public Timestamp createdAt;
+    public Timestamp _created_at;
     @Column("updated_at")
-    public Timestamp updatedAt;
+    public Timestamp _updated_at;
     /**
-     * If the model should automatically set <code>created_at</code> and <code>updated_at</code> fields
+     * If the model should automatically set <code>_created_at</code> and <code>_updated_at</code> fields
      */
     protected boolean timestamps = true;
     protected boolean incrementing = true;
@@ -390,10 +392,10 @@ public class Model {
             return;
         }
 
-        if (this.createdAt == null) {
-            this.createdAt = new Timestamp(System.currentTimeMillis());
+        if (this._created_at == null) {
+            this._created_at = new Timestamp(System.currentTimeMillis());
         }
-        this.updatedAt = new Timestamp(System.currentTimeMillis());
+        this._updated_at = new Timestamp(System.currentTimeMillis());
     }
 
     /**
@@ -432,6 +434,8 @@ public class Model {
                 .isFinal(field.getModifiers())) {
                 return;
             }
+            if(!timestamps && (field.getName().equals("_created_at") || field.getName().equals("_updated_at")))
+                return;
             fields.add(field);
         });
         return fields;

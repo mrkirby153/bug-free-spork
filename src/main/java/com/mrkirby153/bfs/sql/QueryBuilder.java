@@ -250,8 +250,8 @@ public class QueryBuilder {
      */
     public int update(Pair... data) {
         String query = this.grammar.compileUpdate(this, data);
-        try (Connection con = connectionFactory.getConnection()) {
-            PreparedStatement statement = con.prepareStatement(query);
+        try (Connection con = connectionFactory.getConnection();
+            PreparedStatement statement = con.prepareStatement(query)) {
             grammar.bindUpdate(this, statement, data);
             if (logQueries) {
                 logger.debug("Executing UPDATE: " + statement);
@@ -270,17 +270,16 @@ public class QueryBuilder {
      */
     public List<DbRow> get() {
         String query = this.grammar.compileSelect(this);
-        Connection con = connectionFactory.getConnection();
-        PreparedStatement statement = null;
-        try {
-            statement = con.prepareStatement(query);
+        try (Connection con = connectionFactory.getConnection();
+            PreparedStatement statement = con.prepareStatement(query)) {
             grammar.bindSelect(this, statement);
 
             if (logQueries) {
                 logger.debug("Executing SELECT: " + statement);
             }
-            ResultSet rs = statement.executeQuery();
-            return parse(rs);
+            try (ResultSet rs = statement.executeQuery()) {
+                return parse(rs);
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -296,9 +295,8 @@ public class QueryBuilder {
      * @return A list of {@link DbRow}s
      */
     public List<DbRow> raw(@Language("MySQL") String sql, Object... data) {
-        Connection con = connectionFactory.getConnection();
-        try {
-            PreparedStatement statement = con.prepareStatement(sql);
+        try (Connection con = connectionFactory.getConnection();
+            PreparedStatement statement = con.prepareStatement(sql)) {
             int index = 1;
             for (Object o : data) {
                 statement.setObject(index++, o);
@@ -306,8 +304,9 @@ public class QueryBuilder {
             if (logQueries) {
                 logger.debug("Executing raw query: " + statement);
             }
-            ResultSet rs = statement.executeQuery();
-            return parse(rs);
+            try (ResultSet rs = statement.executeQuery()) {
+                return parse(rs);
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -321,8 +320,8 @@ public class QueryBuilder {
      */
     public boolean delete() {
         String query = this.grammar.compileDelete(this);
-        try (Connection con = connectionFactory.getConnection()) {
-            PreparedStatement ps = con.prepareStatement(query);
+        try (Connection con = connectionFactory.getConnection();
+            PreparedStatement ps = con.prepareStatement(query)) {
             this.grammar.bindDelete(this, ps);
             if (logQueries) {
                 logger.debug("Executing DELETE: " + ps);
@@ -341,16 +340,18 @@ public class QueryBuilder {
      */
     public boolean exists() {
         String query = this.grammar.compileExists(this);
-        try (Connection con = connectionFactory.getConnection()) {
-            PreparedStatement ps = con.prepareStatement(query);
+        try (Connection con = connectionFactory.getConnection();
+            PreparedStatement ps = con.prepareStatement(query)) {
+
             this.grammar.bindExists(this, ps);
 
             if (logQueries) {
                 logger.debug("Executing EXISTS: " + ps);
             }
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                return rs.getBoolean("exists");
+            try(ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getBoolean("exists");
+                }
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -365,8 +366,8 @@ public class QueryBuilder {
      */
     public void insert(Pair... data) {
         String query = this.grammar.compileInsert(this, data);
-        try (Connection con = connectionFactory.getConnection()) {
-            PreparedStatement ps = con.prepareStatement(query);
+        try (Connection con = connectionFactory.getConnection();
+            PreparedStatement ps = con.prepareStatement(query)) {
             this.grammar.bindInsert(this, ps, data);
             if (logQueries) {
                 logger.debug("Executing INSERT: " + ps);
@@ -386,20 +387,21 @@ public class QueryBuilder {
      */
     public long insertWithGenerated(Pair... data) {
         String query = this.grammar.compileInsert(this, data);
-        try (Connection con = connectionFactory.getConnection()) {
-            PreparedStatement ps = con.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
+        try (Connection con = connectionFactory.getConnection();
+            PreparedStatement ps = con.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
             this.grammar.bindInsert(this, ps, data);
             if (logQueries) {
                 logger.debug("Executing INSERT (with generated): " + ps);
             }
             ps.executeUpdate();
-            ResultSet rs = ps.getGeneratedKeys();
-            if (rs.next()) {
-                long generated = rs.getLong(1);
-                if (logQueries) {
-                    logger.debug("\t - Returned generated value " + generated);
+            try(ResultSet rs = ps.getGeneratedKeys()) {
+                if (rs.next()) {
+                    long generated = rs.getLong(1);
+                    if (logQueries) {
+                        logger.debug("\t - Returned generated value " + generated);
+                    }
+                    return generated;
                 }
-                return generated;
             }
         } catch (SQLException e) {
             e.printStackTrace();
