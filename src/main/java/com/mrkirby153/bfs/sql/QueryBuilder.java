@@ -283,7 +283,7 @@ public class QueryBuilder {
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return null;
+        return new ArrayList<>();
     }
 
     /**
