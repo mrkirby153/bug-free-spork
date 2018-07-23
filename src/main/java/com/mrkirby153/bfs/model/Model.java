@@ -16,11 +16,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * A model in the database
@@ -37,12 +35,18 @@ public class Model {
     /**
      * If the model should automatically set <code>_created_at</code> and <code>_updated_at</code> fields
      */
-    protected boolean timestamps = true;
-    protected boolean incrementing = true;
+    protected transient boolean timestamps = true;
+    protected transient boolean incrementing = true;
     /**
      * The old state of the model
      */
     private transient HashMap<String, Object> oldState = new HashMap<>();
+
+    private transient HashMap<String, Field> columns = new HashMap<>();
+
+    public Model() {
+        discoverColumns();
+    }
 
     /**
      * Gets a list of all the models matching the query
@@ -257,10 +261,10 @@ public class Model {
     public HashMap<String, Object> getColumnData() {
         HashMap<String, Object> data = new HashMap<>();
 
-        getAccessibleFields().forEach(field -> {
+        columns.forEach((columnName, field) -> {
             try {
                 Object d = field.get(this);
-                data.put(getColumnName(field), d);
+                data.put(columnName, d);
             } catch (IllegalAccessException e) {
                 e.printStackTrace();
             }
@@ -364,15 +368,12 @@ public class Model {
      */
     public void setData(HashMap<String, Object> data) {
         data.forEach((column, d) -> {
-            Optional<Field> fieldOptional = getAccessibleFields().stream()
-                .filter(f -> getColumnName(f).equals(column)).findFirst();
-            if (!fieldOptional.isPresent()) {
-                throw new IllegalArgumentException(
-                    String.format("The column %s was not found", column));
+            Field field = this.columns.get(column);
+            if (field == null) {
+                return;
             }
-            Field f = fieldOptional.get();
             try {
-                f.set(this, d);
+                field.set(this, d);
             } catch (IllegalAccessException e) {
                 e.printStackTrace();
             }
@@ -386,7 +387,7 @@ public class Model {
      */
     public String getPrimaryKey() {
         String key = null;
-        for (Field f : getAccessibleFields()) {
+        for (Field f : this.columns.values()) {
             if (f.isAnnotationPresent(PrimaryKey.class)) {
                 if (key == null) {
                     key = getColumnName(f);
@@ -447,32 +448,26 @@ public class Model {
     }
 
     /**
-     * Gets a list of all the fields accessible and used for saving/loading
-     *
-     * @return The fields
+     * Walk the class tree and add all non-transient non-final fields to the cache
      */
-    private List<Field> getAccessibleFields() {
-        ArrayList<Field> fields = new ArrayList<>();
-
-        ArrayList<Field> allFields = new ArrayList<>();
-        allFields.addAll(Arrays.asList(this.getClass().getFields()));
-        allFields.addAll(Arrays.asList(this.getClass().getDeclaredFields()));
-
-        allFields.forEach(field -> {
-            if (!field.isAccessible()) {
-                field.setAccessible(true);
+    private void discoverColumns() {
+        this.columns.clear();
+        this.oldState.clear();
+        Class c = this.getClass();
+        // Walk the class tree
+        while (c != null) {
+            for (Field field : c.getDeclaredFields()) {
+                if (!field.isAccessible()) {
+                    field.setAccessible(true);
+                }
+                if (Modifier.isTransient(field.getModifiers()) || Modifier
+                    .isFinal(field.getModifiers()) || Modifier.isStatic(field.getModifiers())) {
+                    continue;
+                }
+                String columnName = getColumnName(field);
+                this.columns.put(columnName, field);
             }
-
-            if (Modifier.isTransient(field.getModifiers()) || Modifier
-                .isFinal(field.getModifiers())) {
-                return;
-            }
-            if (!timestamps && (field.getName().equals("_created_at") || field.getName()
-                .equals("_updated_at"))) {
-                return;
-            }
-            fields.add(field);
-        });
-        return fields;
+            c = c.getSuperclass();
+        }
     }
 }
