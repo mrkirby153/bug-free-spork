@@ -15,12 +15,7 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
     public ModelQueryBuilder(Grammar grammar, Class<T> clazz) {
         super(grammar);
         this.modelClass = clazz;
-        try {
-            T instance = clazz.newInstance();
-            table(instance.getTable());
-        } catch (InstantiationException | IllegalAccessException e) {
-            e.printStackTrace();
-        }
+        table(ModelUtils.getTable(clazz));
     }
 
     public List<T> get() {
@@ -29,6 +24,7 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
         rows.forEach(row -> {
             try {
                 T instance = this.modelClass.newInstance();
+                instance.exists = true;
                 instance.setData(row);
                 results.add(instance);
             } catch (IllegalAccessException | InstantiationException e) {
@@ -97,36 +93,31 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
     @Override
     public ModelQueryBuilder<T> join(Type type, String table, String first, String operator,
         String second) {
-        super.join(type, table, first, operator, second);
-        return this;
+        throw new UnsupportedOperationException("Joins are not supported");
     }
 
     @Override
     public ModelQueryBuilder<T> leftJoin(String table, String first, String operator,
         String second) {
-        super.leftJoin(table, first, operator, second);
-        return this;
+        throw new UnsupportedOperationException("Joins are not supported");
     }
 
     @Override
     public ModelQueryBuilder<T> rightJoin(String table, String first, String operator,
         String second) {
-        super.rightJoin(table, first, operator, second);
-        return this;
+        throw new UnsupportedOperationException("Joins are not supported");
     }
 
     @Override
     public ModelQueryBuilder<T> outerJoin(String table, String first, String operator,
         String second) {
-        super.outerJoin(table, first, operator, second);
-        return this;
+        throw new UnsupportedOperationException("Joins are not supported");
     }
 
     @Override
     public ModelQueryBuilder<T> innerJoin(String table, String first, String operator,
         String second) {
-        super.innerJoin(table, first, operator, second);
-        return this;
+        throw new UnsupportedOperationException("Joins are not supported");
     }
 
     @Override

@@ -4,7 +4,6 @@ import com.mrkirby153.bfs.Tuple;
 import com.mrkirby153.bfs.annotations.Column;
 import com.mrkirby153.bfs.annotations.PrimaryKey;
 import com.mrkirby153.bfs.annotations.Table;
-import com.mrkirby153.bfs.sql.DbRow;
 import com.mrkirby153.bfs.sql.QueryBuilder;
 import com.mrkirby153.bfs.sql.elements.Pair;
 import com.mrkirby153.bfs.sql.grammars.Grammar;
@@ -29,20 +28,20 @@ public class Model {
 
     // Internal timestamp fields
     @Column("created_at")
-    public Timestamp _created_at;
+    public Timestamp createdAt;
     @Column("updated_at")
-    public Timestamp _updated_at;
+    public Timestamp updatedAt;
     /**
-     * If the model should automatically set <code>_created_at</code> and <code>_updated_at</code> fields
+     * If the model should automatically set <code>createdAt</code> and <code>updatedAt</code> fields
      */
     protected transient boolean timestamps = true;
     protected transient boolean incrementing = true;
+    protected transient boolean exists = false;
+    protected transient HashMap<String, Field> columns = new HashMap<>();
     /**
      * The old state of the model
      */
     private transient HashMap<String, Object> oldState = new HashMap<>();
-
-    private transient HashMap<String, Field> columns = new HashMap<>();
 
     public Model() {
         discoverColumns();
@@ -94,25 +93,11 @@ public class Model {
      * @return A list of models or an empty array if none exist
      */
     public static <T extends Model> List<T> get(Class<T> modelClass, ModelOption... pairs) {
-        try {
-            ArrayList<T> list = new ArrayList<>();
-            T instance = modelClass.newInstance();
-            QueryBuilder builder = new QueryBuilder(defaultGrammar);
-            builder.table(instance.getTable());
-            builder.select(instance.getColumnData().keySet().toArray(new String[0]));
-            for (ModelOption option : pairs) {
-                builder.where(option.getColumn(), option.getOperator(), option.getData());
-            }
-            for (DbRow row : builder.query()) {
-                T newInstance = modelClass.newInstance();
-                newInstance.setData(row);
-                list.add(newInstance);
-            }
-            return list;
-        } catch (InstantiationException | IllegalAccessException e) {
-            e.printStackTrace();
+        ModelQueryBuilder<T> builder = new ModelQueryBuilder<>(defaultGrammar, modelClass);
+        for (ModelOption option : pairs) {
+            builder.where(option.getColumn(), option.getOperator(), option.getData());
         }
-        return new ArrayList<>();
+        return builder.get();
     }
 
     /**
@@ -269,6 +254,10 @@ public class Model {
                 e.printStackTrace();
             }
         });
+        if (!timestamps) {
+            data.remove("created_at");
+            data.remove("updated_at");
+        }
         return data;
     }
 
@@ -298,10 +287,8 @@ public class Model {
         if (!this.isDirty()) {
             return; // Don't bother saving if we're not dirty
         }
-        boolean exists = new QueryBuilder(defaultGrammar).table(this.getTable())
-            .where(getPrimaryKey(), getColumnData().get(getPrimaryKey())).exists();
 
-        if (exists) {
+        if (this.exists) {
             this.update();
         } else {
             this.create();
@@ -335,6 +322,7 @@ public class Model {
         } else {
             new QueryBuilder(defaultGrammar).table(this.getTable()).insert(data);
         }
+        this.exists = true;
         this.updateState();
     }
 
@@ -342,11 +330,11 @@ public class Model {
      * Deletes the model from the database
      */
     public void delete() {
+        this.exists = false;
         new QueryBuilder(defaultGrammar).table(this.getTable())
             .where(this.getPrimaryKey(), "=", this.getColumnData().get(this.getPrimaryKey()))
             .delete();
     }
-
 
     /**
      * Gets the current data as an array of {@link Pair}
@@ -406,6 +394,15 @@ public class Model {
     }
 
     /**
+     * Returns if the model exists
+     *
+     * @return The model
+     */
+    public boolean exists() {
+        return this.exists;
+    }
+
+    /**
      * Gets the model's table in the database
      *
      * @return The table of the model
@@ -426,10 +423,13 @@ public class Model {
             return;
         }
 
-        if (this._created_at == null) {
-            this._created_at = new Timestamp(System.currentTimeMillis());
+        Timestamp now = new Timestamp(System.currentTimeMillis());
+        if (!exists && !isDirty("created_at")) {
+            this.createdAt = now;
         }
-        this._updated_at = new Timestamp(System.currentTimeMillis());
+        if (!isDirty("updated_at")) {
+            this.updatedAt = now;
+        }
     }
 
     /**
@@ -469,5 +469,36 @@ public class Model {
             }
             c = c.getSuperclass();
         }
+    }
+
+    /**
+     * Checks if a column is dirty
+     *
+     * @param column The column to check
+     *
+     * @return True if the column is dirty
+     */
+    protected boolean isDirty(String column) {
+        if (!this.columns.containsKey(column)) {
+            return false;
+        }
+        try {
+            Object currentVal = this.columns.get(column).get(this);
+            Object oldVal = this.oldState.get(column);
+            if (currentVal == null) {
+                if (oldVal != null) {
+                    return true;
+                }
+            } else {
+                if (oldVal == null) {
+                    return true;
+                } else {
+                    return !currentVal.equals(oldVal);
+                }
+            }
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 }
