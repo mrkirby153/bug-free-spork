@@ -4,6 +4,7 @@ import com.mrkirby153.bfs.Tuple;
 import com.mrkirby153.bfs.annotations.Column;
 import com.mrkirby153.bfs.annotations.PrimaryKey;
 import com.mrkirby153.bfs.annotations.Table;
+import com.mrkirby153.bfs.model.traits.HasTimestamps;
 import com.mrkirby153.bfs.sql.QueryBuilder;
 import com.mrkirby153.bfs.sql.elements.Pair;
 import com.mrkirby153.bfs.sql.grammars.Grammar;
@@ -24,7 +25,7 @@ import java.util.stream.Collectors;
 /**
  * A model in the database
  */
-public class Model {
+public class Model implements HasTimestamps {
 
     private static Field defaultCreatedAtField;
     private static Field defaultUpdatedAtField;
@@ -313,7 +314,7 @@ public class Model {
         HashMap<String, Object> data = getColumnData();
         new QueryBuilder(defaultGrammar).table(this.getTable())
             .where(getPrimaryKey(), data.get(getPrimaryKey()))
-            .update(getDataAsPairs().toArray(new Pair[0]));
+            .update(getDirtyDataAsPairs().toArray(new Pair[0]));
     }
 
     /**
@@ -324,14 +325,14 @@ public class Model {
         Pair[] data = getDataAsPairs().stream().filter(pair -> {
             // Remove the updated_at and created_at field if they're not dirty and the default
             if (!timestamps) {
-                if (pair.getColumn().equalsIgnoreCase("created_at")) {
-                    if (columns.get("created_at").equals(defaultCreatedAtField)) {
-                        return isDirty("created_at");
+                if (pair.getColumn().equalsIgnoreCase(getCreatedAt())) {
+                    if (columns.get(getCreatedAt()).equals(defaultCreatedAtField)) {
+                        return isDirty(getCreatedAt());
                     }
                 }
-                if (pair.getColumn().equalsIgnoreCase("updated_at")) {
-                    if (columns.get("updated_at").equals(defaultUpdatedAtField)) {
-                        return isDirty("updated_at");
+                if (pair.getColumn().equalsIgnoreCase(getUpdatedAt())) {
+                    if (columns.get(getUpdatedAt()).equals(defaultUpdatedAtField)) {
+                        return isDirty(getUpdatedAt());
                     }
                 }
             }
@@ -367,9 +368,14 @@ public class Model {
      */
     private ArrayList<Pair> getDataAsPairs() {
         ArrayList<Pair> a = new ArrayList<>();
-        getColumnData().forEach((k, v) -> {
-            a.add(new Pair(k, v));
-        });
+        getColumnData().forEach((k, v) -> a.add(new Pair(k, v)));
+        return a;
+    }
+
+    private ArrayList<Pair> getDirtyDataAsPairs(){
+        ArrayList<Pair> a = new ArrayList<>();
+        HashMap<String, Object> data = getColumnData();
+        getDirtyColumns().forEach(col -> a.add(new Pair(col, data.get(col))));
         return a;
     }
 
@@ -464,11 +470,11 @@ public class Model {
         }
 
         Timestamp now = new Timestamp(System.currentTimeMillis());
-        if (!exists && !isDirty("created_at")) {
-            setData("created_at", now);
+        if (!exists && !isDirty(getCreatedAt())) {
+            setData(getCreatedAt(), now);
         }
-        if (!isDirty("updated_at")) {
-            setData("updated_at", now);
+        if (!isDirty(getUpdatedAt())) {
+            setData(getUpdatedAt(), now);
         }
     }
 
