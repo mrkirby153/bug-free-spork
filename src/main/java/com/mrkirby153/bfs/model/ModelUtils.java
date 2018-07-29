@@ -17,4 +17,31 @@ public class ModelUtils {
             }
         });
     }
+
+    @SuppressWarnings("unchecked")
+    protected static <T extends Model> ModelQueryBuilder<T> getQueryBuilderWithScopes(
+        Class<T> clazz) {
+        try {
+            T instance = clazz.newInstance();
+            ModelQueryBuilder<T> qb = new ModelQueryBuilder<>(Model.getDefaultGrammar(), clazz);
+            qb.table(instance.getTable());
+            instance.getScopes().forEach(scope -> scope.apply(qb, null));
+            return qb;
+        } catch (InstantiationException | IllegalAccessException e) {
+           throw new RuntimeException(e);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    protected static <T extends Model> ModelQueryBuilder<T> getQueryBuilderWithoutScopes(
+        Class<T> clazz) {
+        try {
+            T instance = clazz.newInstance();
+            ModelQueryBuilder<T> qb = new ModelQueryBuilder<>(Model.getDefaultGrammar(), clazz);
+            qb.table(instance.getTable());
+            return qb;
+        } catch (InstantiationException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+    }
 }

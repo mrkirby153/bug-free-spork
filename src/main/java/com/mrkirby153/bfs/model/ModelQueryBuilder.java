@@ -12,10 +12,11 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
 
     private Class<T> modelClass;
 
+    private T model;
+
     public ModelQueryBuilder(Grammar grammar, Class<T> clazz) {
         super(grammar);
         this.modelClass = clazz;
-        table(ModelUtils.getTable(clazz));
     }
 
     public List<T> get() {
@@ -93,36 +94,45 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
     @Override
     public ModelQueryBuilder<T> join(Type type, String table, String first, String operator,
         String second) {
-        throw new UnsupportedOperationException("Joins are not supported");
+        super.join(type, table, first, operator, second);
+        return this;
     }
 
     @Override
     public ModelQueryBuilder<T> leftJoin(String table, String first, String operator,
         String second) {
-        throw new UnsupportedOperationException("Joins are not supported");
+        super.leftJoin(table, first, operator, second);
+        return this;
     }
 
     @Override
     public ModelQueryBuilder<T> rightJoin(String table, String first, String operator,
         String second) {
-        throw new UnsupportedOperationException("Joins are not supported");
+        super.rightJoin(table, first, operator, second);
+        return this;
     }
 
     @Override
     public ModelQueryBuilder<T> outerJoin(String table, String first, String operator,
         String second) {
-        throw new UnsupportedOperationException("Joins are not supported");
+        super.outerJoin(table, first, operator, second);
+        return this;
     }
 
     @Override
     public ModelQueryBuilder<T> innerJoin(String table, String first, String operator,
         String second) {
-        throw new UnsupportedOperationException("Joins are not supported");
+        super.innerJoin(table, first, operator, second);
+        return this;
     }
 
     @Override
     public ModelQueryBuilder<T> distinct() {
         super.distinct();
         return this;
+    }
+
+    protected void setModel(T model) {
+        this.model = model;
     }
 }

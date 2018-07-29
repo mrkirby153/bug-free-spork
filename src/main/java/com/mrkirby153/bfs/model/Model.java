@@ -4,8 +4,8 @@ import com.mrkirby153.bfs.Tuple;
 import com.mrkirby153.bfs.annotations.Column;
 import com.mrkirby153.bfs.annotations.PrimaryKey;
 import com.mrkirby153.bfs.annotations.Table;
+import com.mrkirby153.bfs.model.scopes.Scope;
 import com.mrkirby153.bfs.model.traits.HasTimestamps;
-import com.mrkirby153.bfs.sql.QueryBuilder;
 import com.mrkirby153.bfs.sql.elements.Pair;
 import com.mrkirby153.bfs.sql.grammars.Grammar;
 import com.mrkirby153.bfs.sql.grammars.MySqlGrammar;
@@ -56,6 +56,7 @@ public class Model implements HasTimestamps {
      * The old state of the model
      */
     private transient HashMap<String, Object> oldState = new HashMap<>();
+    private transient List<Scope> scopes = new ArrayList<>();
 
     public Model() {
         discoverColumns();
@@ -74,6 +75,15 @@ public class Model implements HasTimestamps {
     public static <T extends Model> List<T> get(Class<T> modelClass, String column, String operator,
         Object data) {
         return get(modelClass, new ModelOption(column, operator, data));
+    }
+
+    /**
+     * Gets the default {@link Grammar}
+     *
+     * @return The grammar
+     */
+    public static Grammar getDefaultGrammar() {
+        return defaultGrammar;
     }
 
     /**
@@ -107,7 +117,7 @@ public class Model implements HasTimestamps {
      * @return A list of models or an empty array if none exist
      */
     public static <T extends Model> List<T> get(Class<T> modelClass, ModelOption... pairs) {
-        ModelQueryBuilder<T> builder = new ModelQueryBuilder<>(defaultGrammar, modelClass);
+        ModelQueryBuilder<T> builder = ModelUtils.getQueryBuilderWithScopes(modelClass);
         for (ModelOption option : pairs) {
             builder.where(option.getColumn(), option.getOperator(), option.getData());
         }
@@ -249,7 +259,7 @@ public class Model implements HasTimestamps {
      * @return A model query builder
      */
     public static <T extends Model> ModelQueryBuilder<T> query(Class<T> modelClass) {
-        return new ModelQueryBuilder<>(defaultGrammar, modelClass);
+        return ModelUtils.getQueryBuilderWithScopes(modelClass);
     }
 
     /**
@@ -312,8 +322,7 @@ public class Model implements HasTimestamps {
     public void update() {
         this.updateTimestamps();
         HashMap<String, Object> data = getColumnData();
-        new QueryBuilder(defaultGrammar).table(this.getTable())
-            .where(getPrimaryKey(), data.get(getPrimaryKey()))
+        newQueryWithScopes().where(getPrimaryKey(), data.get(getPrimaryKey()))
             .update(getDirtyDataAsPairs().toArray(new Pair[0]));
     }
 
@@ -338,14 +347,14 @@ public class Model implements HasTimestamps {
             }
             return true;
         }).toArray(Pair[]::new);
+        ModelQueryBuilder modelQueryBuilder = newQueryWithoutScopes();
         if (this.incrementing) {
-            long generated = new QueryBuilder(defaultGrammar).table(this.getTable())
-                .insertWithGenerated(data);
+            long generated = modelQueryBuilder.insertWithGenerated(data);
             HashMap<String, Object> d = new HashMap<>();
             d.put(getPrimaryKey(), generated);
             setData(d);
         } else {
-            new QueryBuilder(defaultGrammar).table(this.getTable()).insert(data);
+            modelQueryBuilder.insert(data);
         }
         this.exists = true;
         this.updateState();
@@ -355,10 +364,10 @@ public class Model implements HasTimestamps {
      * Deletes the model from the database
      */
     public void delete() {
-        this.exists = false;
-        new QueryBuilder(defaultGrammar).table(this.getTable())
+        newQueryWithoutScopes()
             .where(this.getPrimaryKey(), "=", this.getColumnData().get(this.getPrimaryKey()))
             .delete();
+        this.exists = false;
     }
 
     /**
@@ -372,7 +381,7 @@ public class Model implements HasTimestamps {
         return a;
     }
 
-    private ArrayList<Pair> getDirtyDataAsPairs(){
+    private ArrayList<Pair> getDirtyDataAsPairs() {
         ArrayList<Pair> a = new ArrayList<>();
         HashMap<String, Object> data = getColumnData();
         getDirtyColumns().forEach(col -> a.add(new Pair(col, data.get(col))));
@@ -491,6 +500,50 @@ public class Model implements HasTimestamps {
         } else {
             return field.getName();
         }
+    }
+
+    /**
+     * Creates a new {@link ModelQueryBuilder} with all registered scopes applied
+     *
+     * @return The query builder
+     */
+    @SuppressWarnings("unchecked")
+    private <T extends Model> ModelQueryBuilder<T> newQueryWithScopes() {
+        ModelQueryBuilder q = new ModelQueryBuilder<>(defaultGrammar, (Class<T>) this.getClass());
+        q.table(this.getTable());
+        q.setModel(this);
+        this.scopes.forEach(scope -> scope.apply(q, this));
+        return q;
+    }
+
+    /**
+     * Creates a new {@link ModelQueryBuilder} without all registered scopes applied
+     *
+     * @return The query builder
+     */
+    @SuppressWarnings("unchecked")
+    private <T extends Model> ModelQueryBuilder newQueryWithoutScopes() {
+        ModelQueryBuilder q = new ModelQueryBuilder(defaultGrammar, this.getClass());
+        q.table(this.getTable());
+        return q;
+    }
+
+    /**
+     * Adds a scope to be applied to all queries
+     *
+     * @param scope The scope to add
+     */
+    protected void addScope(Scope scope) {
+        this.scopes.add(scope);
+    }
+
+    /**
+     * Returns an immutable copy of scopes on the model
+     *
+     * @return The scopes
+     */
+    public List<Scope> getScopes() {
+        return new ArrayList<>(this.scopes);
     }
 
     /**
