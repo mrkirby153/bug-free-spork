@@ -15,16 +15,29 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * A model in the database
  */
 public class Model {
 
+    private static Field defaultCreatedAtField;
+    private static Field defaultUpdatedAtField;
     private static Grammar defaultGrammar = new MySqlGrammar();
+
+    static {
+        try {
+            // Declare the default timestamp fields so we can exclude them reflectively
+            defaultCreatedAtField = Model.class.getDeclaredField("createdAt");
+            defaultUpdatedAtField = Model.class.getDeclaredField("updatedAt");
+        } catch (NoSuchFieldException ignored) {
+        }
+    }
 
     // Internal timestamp fields
     @Column("created_at")
@@ -254,10 +267,6 @@ public class Model {
                 e.printStackTrace();
             }
         });
-        if (!timestamps) {
-            data.remove("created_at");
-            data.remove("updated_at");
-        }
         return data;
     }
 
@@ -312,7 +321,22 @@ public class Model {
      */
     public void create() {
         this.updateTimestamps();
-        Pair[] data = getDataAsPairs().toArray(new Pair[0]);
+        Pair[] data = getDataAsPairs().stream().filter(pair -> {
+            // Remove the updated_at and created_at field if they're not dirty and the default
+            if (!timestamps) {
+                if (pair.getColumn().equalsIgnoreCase("created_at")) {
+                    if (columns.get("created_at").equals(defaultCreatedAtField)) {
+                        return isDirty("created_at");
+                    }
+                }
+                if (pair.getColumn().equalsIgnoreCase("updated_at")) {
+                    if (columns.get("updated_at").equals(defaultUpdatedAtField)) {
+                        return isDirty("updated_at");
+                    }
+                }
+            }
+            return true;
+        }).toArray(Pair[]::new);
         if (this.incrementing) {
             long generated = new QueryBuilder(defaultGrammar).table(this.getTable())
                 .insertWithGenerated(data);
@@ -368,6 +392,18 @@ public class Model {
         });
     }
 
+    public void setData(String key, Object value) {
+        Field field = this.columns.get(key);
+        if (field == null) {
+            return;
+        }
+        try {
+            field.set(this, value);
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
     /**
      * Gets the model's primary key
      *
@@ -415,6 +451,10 @@ public class Model {
         return this.getClass().getAnnotation(Table.class).value();
     }
 
+    private List<String> getDirtyColumns() {
+        return this.columns.keySet().stream().filter(this::isDirty).collect(Collectors.toList());
+    }
+
     /**
      * Updates the timestamps of this model
      */
@@ -425,10 +465,10 @@ public class Model {
 
         Timestamp now = new Timestamp(System.currentTimeMillis());
         if (!exists && !isDirty("created_at")) {
-            this.createdAt = now;
+            setData("created_at", now);
         }
         if (!isDirty("updated_at")) {
-            this.updatedAt = now;
+            setData("updated_at", now);
         }
     }
 
@@ -453,9 +493,16 @@ public class Model {
     private void discoverColumns() {
         this.columns.clear();
         this.oldState.clear();
-        Class c = this.getClass();
+        Class c1 = this.getClass();
+        List<Class> classes = new ArrayList<>();
+        while (c1 != null) {
+            classes.add(c1);
+            c1 = c1.getSuperclass();
+        }
+        // Traverse the class tree from Object to its children
+        Collections.reverse(classes);
         // Walk the class tree
-        while (c != null) {
+        for (Class c : classes) {
             for (Field field : c.getDeclaredFields()) {
                 if (!field.isAccessible()) {
                     field.setAccessible(true);
