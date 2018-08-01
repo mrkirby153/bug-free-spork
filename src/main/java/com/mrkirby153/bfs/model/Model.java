@@ -322,7 +322,7 @@ public class Model implements HasTimestamps {
     public void update() {
         this.updateTimestamps();
         HashMap<String, Object> data = getColumnData();
-        newQueryWithScopes().where(getPrimaryKey(), data.get(getPrimaryKey()))
+        newQueryWithoutScopes().where(getPrimaryKey(), data.get(getPrimaryKey()))
             .update(getDirtyDataAsPairs().toArray(new Pair[0]));
     }
 
@@ -405,6 +405,7 @@ public class Model implements HasTimestamps {
                 e.printStackTrace();
             }
         });
+        updateState();
     }
 
     public void setData(String key, Object value) {
@@ -473,7 +474,7 @@ public class Model implements HasTimestamps {
     /**
      * Updates the timestamps of this model
      */
-    private void updateTimestamps() {
+    void updateTimestamps() {
         if (!timestamps) {
             return;
         }

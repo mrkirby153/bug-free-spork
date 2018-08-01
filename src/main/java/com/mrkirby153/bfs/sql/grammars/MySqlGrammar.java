@@ -3,6 +3,7 @@ package com.mrkirby153.bfs.sql.grammars;
 import com.mrkirby153.bfs.sql.QueryBuilder;
 import com.mrkirby153.bfs.sql.elements.Pair;
 import com.mrkirby153.bfs.sql.elements.WhereElement;
+import com.mrkirby153.bfs.sql.elements.WhereNullElemenet;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -182,7 +183,7 @@ public class MySqlGrammar implements Grammar {
         if (builder.getWheres().isEmpty()) {
             return "";
         }
-        return "WHERE " + appendWheres(builder.getWheres()).replaceFirst("AND\\s?", "");
+        return "WHERE " + appendWheres(builder.getWheres());
     }
 
     private String compileOrders(QueryBuilder builder) {
@@ -235,10 +236,19 @@ public class MySqlGrammar implements Grammar {
      */
     private String appendWheres(ArrayList<WhereElement> e) {
         StringBuilder s = new StringBuilder();
-        for (WhereElement g : e) {
-            s.append("AND ");
+        for(int i = 0; i < e.size(); i++){
+            WhereElement g = e.get(i);
+            if(i > 0){
+                s.append(g.getBool());
+                s.append(" ");
+            }
             s.append(wrap(g.getField())).append(" ");
-            s.append(g.getOperation()).append(" ? ");
+            if(g instanceof WhereNullElemenet){
+               s.append("IS ").append(g.getBinding());
+            } else {
+                s.append(g.getOperation()).append(" ?");
+            }
+            s.append(" ");
         }
         return s.toString();
     }
@@ -255,6 +265,8 @@ public class MySqlGrammar implements Grammar {
     private int bindWheres(QueryBuilder builder, PreparedStatement statement, int startIndex) {
         AtomicInteger a = new AtomicInteger(startIndex);
         builder.getWheres().forEach(w -> {
+            if(w instanceof WhereNullElemenet)
+                return;
             try {
                 statement.setObject(a.getAndIncrement(), w.getBinding());
             } catch (SQLException e) {

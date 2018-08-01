@@ -6,6 +6,7 @@ import com.mrkirby153.bfs.sql.elements.JoinElement.Type;
 import com.mrkirby153.bfs.sql.elements.OrderElement;
 import com.mrkirby153.bfs.sql.elements.Pair;
 import com.mrkirby153.bfs.sql.elements.WhereElement;
+import com.mrkirby153.bfs.sql.elements.WhereNullElemenet;
 import com.mrkirby153.bfs.sql.grammars.Grammar;
 import com.mrkirby153.bfs.sql.grammars.MySqlGrammar;
 import org.intellij.lang.annotations.Language;
@@ -187,7 +188,7 @@ public class QueryBuilder {
         if (!Arrays.asList(operators).contains(operator.toLowerCase())) {
             throw new IllegalArgumentException("The operator " + operator + " is not valid!");
         }
-        WhereElement e = new WhereElement(operator, column, value);
+        WhereElement e = new WhereElement(operator, column, value, "AND");
         this.wheres.add(e);
         return this;
     }
@@ -202,6 +203,16 @@ public class QueryBuilder {
      */
     public QueryBuilder where(String column, Object value) {
         return this.where(column, "=", value);
+    }
+
+    public QueryBuilder whereNull(String column, boolean not) {
+        WhereNullElemenet e = new WhereNullElemenet(column, not? "NotNull" : "Null");
+        this.wheres.add(e);
+        return this;
+    }
+
+    public QueryBuilder whereNull(String column) {
+        return whereNull(column, false);
     }
 
     /**
