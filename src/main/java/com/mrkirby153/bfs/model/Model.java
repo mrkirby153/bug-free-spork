@@ -72,6 +72,7 @@ public class Model implements HasTimestamps {
      *
      * @return A list of models matching the query or an empty array if none exist
      */
+    @Deprecated
     public static <T extends Model> List<T> get(Class<T> modelClass, String column, String operator,
         Object data) {
         return get(modelClass, new ModelOption(column, operator, data));
@@ -104,6 +105,7 @@ public class Model implements HasTimestamps {
      *
      * @return A list of models matching the query or an empty array if none exist
      */
+    @Deprecated
     public static <T extends Model> List<T> get(Class<T> modelClass, String column, Object data) {
         return get(modelClass, new ModelOption(column, "=", data));
     }
@@ -116,6 +118,7 @@ public class Model implements HasTimestamps {
      *
      * @return A list of models or an empty array if none exist
      */
+    @Deprecated
     public static <T extends Model> List<T> get(Class<T> modelClass, ModelOption... pairs) {
         ModelQueryBuilder<T> builder = ModelUtils.getQueryBuilderWithScopes(modelClass);
         for (ModelOption option : pairs) {
@@ -143,6 +146,7 @@ public class Model implements HasTimestamps {
      *
      * @return A list of models or an empty array if none exist
      */
+    @Deprecated
     public static <T extends Model> List<T> get(Class<T> modelClass, Tuple<String, ?>... tuples) {
         List<ModelOption> options = new ArrayList<>();
         for (Tuple<String, ?> t : tuples) {
@@ -161,6 +165,7 @@ public class Model implements HasTimestamps {
      *
      * @return The first element matching the query or null
      */
+    @Deprecated
     public static <T extends Model> T first(Class<T> modelClass, String column, String operator,
         Object data) {
         List<T> list = get(modelClass, column, operator, data);
@@ -179,6 +184,7 @@ public class Model implements HasTimestamps {
      *
      * @return The first element matching the query or null
      */
+    @Deprecated
     public static <T extends Model> T first(Class<T> modelClass, String column, Object data) {
         return first(modelClass, column, "=", data);
     }
@@ -191,7 +197,7 @@ public class Model implements HasTimestamps {
      * @return The first model
      */
     public static <T extends Model> T first(Class<T> modelClass) {
-        return first(modelClass, new ModelOption[0]);
+        return ModelUtils.getQueryBuilderWithScopes(modelClass).first();
     }
 
     /**
@@ -202,6 +208,7 @@ public class Model implements HasTimestamps {
      *
      * @return The first element matching the query or null
      */
+    @Deprecated
     public static <T extends Model> T first(Class<T> modelClass, ModelOption... pairs) {
         List<T> list = get(modelClass, pairs);
         if (list.size() < 1) {
@@ -218,6 +225,7 @@ public class Model implements HasTimestamps {
      *
      * @return The first element matching the query, or null
      */
+    @Deprecated
     public static <T extends Model> T first(Class<T> modelClass, Tuple<String, ?>... tuples) {
         List<ModelOption> options = new ArrayList<>();
         for (Tuple<String, ?> tuple : tuples) {
@@ -260,6 +268,37 @@ public class Model implements HasTimestamps {
      */
     public static <T extends Model> ModelQueryBuilder<T> query(Class<T> modelClass) {
         return ModelUtils.getQueryBuilderWithScopes(modelClass);
+    }
+
+    /**
+     * Gets a {@link ModelQueryBuilder} for a model
+     *
+     * @param modelClass The model class
+     * @param column     The column
+     * @param operator   The comparison operator
+     * @param data       The value of the data
+     *
+     * @return The builder
+     */
+    public static <T extends Model> ModelQueryBuilder<T> where(Class<T> modelClass, String column,
+        String operator, Object data) {
+        ModelQueryBuilder<T> qb = ModelUtils.getQueryBuilderWithScopes(modelClass);
+        qb.where(column, operator, data);
+        return qb;
+    }
+
+    /**
+     * Gets a {@link ModelQueryBuilder} for a model with a where clause
+     *
+     * @param modelClass The model class
+     * @param column     The column
+     * @param data       The data
+     *
+     * @return The builder
+     */
+    public static <T extends Model> ModelQueryBuilder<T> where(Class<T> modelClass, String column,
+        Object data) {
+        return where(modelClass, column, "=", data);
     }
 
     /**
