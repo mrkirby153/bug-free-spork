@@ -25,7 +25,7 @@ public class ModelUtils {
             T instance = clazz.newInstance();
             ModelQueryBuilder<T> qb = new ModelQueryBuilder<>(Model.getDefaultGrammar(), clazz);
             qb.table(instance.getTable());
-            instance.getScopes().forEach(scope -> scope.apply(qb, null));
+            qb.addScopes(instance.getScopes());
             return qb;
         } catch (InstantiationException | IllegalAccessException e) {
            throw new RuntimeException(e);

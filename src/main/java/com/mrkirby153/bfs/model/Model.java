@@ -56,7 +56,7 @@ public class Model implements HasTimestamps {
      * The old state of the model
      */
     private transient HashMap<String, Object> oldState = new HashMap<>();
-    private transient List<Scope> scopes = new ArrayList<>();
+    private transient HashMap<String, Scope> scopes = new HashMap<>();
 
     public Model() {
         discoverColumns();
@@ -512,7 +512,6 @@ public class Model implements HasTimestamps {
         ModelQueryBuilder q = new ModelQueryBuilder<>(defaultGrammar, (Class<T>) this.getClass());
         q.table(this.getTable());
         q.setModel(this);
-        this.scopes.forEach(scope -> scope.apply(q, this));
         return q;
     }
 
@@ -533,8 +532,8 @@ public class Model implements HasTimestamps {
      *
      * @param scope The scope to add
      */
-    protected void addScope(Scope scope) {
-        this.scopes.add(scope);
+    protected void addScope(Scope scope, String name) {
+        this.scopes.put(name, scope);
     }
 
     /**
@@ -542,8 +541,8 @@ public class Model implements HasTimestamps {
      *
      * @return The scopes
      */
-    public List<Scope> getScopes() {
-        return new ArrayList<>(this.scopes);
+    public HashMap<String, Scope> getScopes() {
+        return new HashMap<>(this.scopes);
     }
 
     /**
