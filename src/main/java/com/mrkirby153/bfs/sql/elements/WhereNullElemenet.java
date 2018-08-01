@@ -2,7 +2,14 @@ package com.mrkirby153.bfs.sql.elements;
 
 public class WhereNullElemenet extends WhereElement {
 
-    public WhereNullElemenet(String field, String type) {
-        super("is", field, type, "AND");
+    private boolean not;
+
+    public WhereNullElemenet(String field, boolean not, String bool) {
+        super(null, field, "NULL", bool);
+        this.not = not;
+    }
+
+    public boolean isNot() {
+        return not;
     }
 }

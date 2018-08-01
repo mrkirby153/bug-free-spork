@@ -244,7 +244,7 @@ public class MySqlGrammar implements Grammar {
             }
             s.append(wrap(g.getField())).append(" ");
             if(g instanceof WhereNullElemenet){
-               s.append("IS ").append(g.getBinding());
+                s.append(((WhereNullElemenet) g).isNot()? "IS NOT " : "IS ").append(g.getBinding());
             } else {
                 s.append(g.getOperation()).append(" ?");
             }

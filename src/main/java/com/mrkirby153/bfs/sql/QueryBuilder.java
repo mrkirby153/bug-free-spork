@@ -188,6 +188,11 @@ public class QueryBuilder {
         if (!Arrays.asList(operators).contains(operator.toLowerCase())) {
             throw new IllegalArgumentException("The operator " + operator + " is not valid!");
         }
+        // Special override for null values
+        if (value == null) {
+            this.whereNull(column, operator.equalsIgnoreCase("!="));
+            return this;
+        }
         WhereElement e = new WhereElement(operator, column, value, "AND");
         this.wheres.add(e);
         return this;
@@ -206,7 +211,7 @@ public class QueryBuilder {
     }
 
     public QueryBuilder whereNull(String column, boolean not) {
-        WhereNullElemenet e = new WhereNullElemenet(column, not? "NotNull" : "Null");
+        WhereNullElemenet e = new WhereNullElemenet(column, not, "AND");
         this.wheres.add(e);
         return this;
     }
