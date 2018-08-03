@@ -179,12 +179,13 @@ public class QueryBuilder {
      * @param column   The column to use in the clause
      * @param operator The operator to use when comparing
      * @param value    The value to compare
+     * @param bool     The boolean separator (AND or OR)
      *
      * @return The query builder
      *
      * @throws IllegalArgumentException If the operator provided is not a valid operator
      */
-    public QueryBuilder where(String column, String operator, Object value) {
+    public QueryBuilder where(String column, String operator, Object value, String bool) {
         if (!Arrays.asList(operators).contains(operator.toLowerCase())) {
             throw new IllegalArgumentException("The operator " + operator + " is not valid!");
         }
@@ -193,21 +194,34 @@ public class QueryBuilder {
             this.whereNull(column, operator.equalsIgnoreCase("!="));
             return this;
         }
-        WhereElement e = new WhereElement(operator, column, value, "AND");
+        WhereElement e = new WhereElement(operator, column, value, bool);
         this.wheres.add(e);
         return this;
     }
 
     /**
-     * Adds a <code>WHERE</code> clause using the equality operator
+     * Adds a <code>WHERE</code> clause to the query
      *
-     * @param column The column to check
-     * @param value  The value
+     * @param column   The column to use in the clause
+     * @param operator The operator to use when comparing
+     * @param value    The value to compare against
      *
      * @return The query builder
      */
+    public QueryBuilder where(String column, String operator, Object value) {
+        return this.where(column, operator, value, "AND");
+    }
+
     public QueryBuilder where(String column, Object value) {
         return this.where(column, "=", value);
+    }
+
+    public QueryBuilder orWhere(String column, String operator, Object value){
+        return this.where(column, operator, value, "OR");
+    }
+
+    public QueryBuilder orWhere(String column, Object value){
+        return this.where(column, "=", value, "OR");
     }
 
     public QueryBuilder whereNull(String column, boolean not) {

@@ -71,6 +71,12 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
     }
 
     @Override
+    public ModelQueryBuilder<T> where(String column, String operator, Object value, String bool) {
+        super.where(column, operator, value, bool);
+        return this;
+    }
+
+    @Override
     public ModelQueryBuilder<T> where(String column, String operator, Object value) {
         super.where(column, operator, value);
         return this;
@@ -79,6 +85,30 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
     @Override
     public ModelQueryBuilder<T> where(String column, Object value) {
         super.where(column, value);
+        return this;
+    }
+
+    @Override
+    public ModelQueryBuilder<T> orWhere(String column, String operator, Object value) {
+        super.orWhere(column, operator, value);
+        return this;
+    }
+
+    @Override
+    public ModelQueryBuilder orWhere(String column, Object value) {
+        super.orWhere(column, value);
+        return this;
+    }
+
+    @Override
+    public ModelQueryBuilder<T> whereNull(String column, boolean not) {
+        super.whereNull(column, not);
+        return this;
+    }
+
+    @Override
+    public ModelQueryBuilder<T> whereNull(String column) {
+        super.whereNull(column);
         return this;
     }
 

@@ -154,4 +154,10 @@ public class QueryBuilderMySQLTest {
         Assert
             .assertEquals("SELECT * FROM `test` INNER JOIN testing ON id = test", builder.toSql());
     }
+
+    @Test
+    public void testOrWheres(){
+        QueryBuilder builder = new QueryBuilder().table("test").where("test", 1).orWhere("one", 2);
+        Assert.assertEquals("SELECT * FROM `test` WHERE `test` = ? OR `one` = ?", builder.toSql());
+    }
 }
