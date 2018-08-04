@@ -594,7 +594,7 @@ public class QueryBuilder {
      * @return The primary key
      */
     public long insertWithGenerated(Pair... data) {
-        Arrays.stream(data).map(Pair::getColumn).forEach(d -> addBinding("insert", d));
+        Arrays.stream(data).map(Pair::getValue).forEach(d -> addBinding("insert", d));
         String query = this.grammar.compileInsert(this, data);
         try (Connection con = connectionFactory.getConnection();
             PreparedStatement ps = con.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
