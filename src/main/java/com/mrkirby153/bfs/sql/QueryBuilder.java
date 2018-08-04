@@ -455,7 +455,7 @@ public class QueryBuilder {
      * @return The amount of rows returned or -1 if the query fails
      */
     public int update(Pair... data) {
-        Arrays.stream(data).map(Pair::getValue).forEach(d -> addBinding("update", data));
+        Arrays.stream(data).map(Pair::getValue).forEach(d -> addBinding("update", d));
         String query = this.grammar.compileUpdate(this, data);
         try (Connection con = connectionFactory.getConnection();
             PreparedStatement statement = con.prepareStatement(query)) {
