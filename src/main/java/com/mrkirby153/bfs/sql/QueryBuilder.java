@@ -310,6 +310,18 @@ public class QueryBuilder {
     }
 
     /**
+     * Adds a where clause checking if a column is null
+     *
+     * @param column The column
+     * @param not    If the column should be not null
+     *
+     * @return The query builder
+     */
+    public QueryBuilder whereNull(String column, boolean not) {
+        return whereNull(column, not, "AND");
+    }
+
+    /**
      * Adds a WHERE IN clause to the query
      *
      * @param column The column
