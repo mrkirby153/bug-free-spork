@@ -160,4 +160,16 @@ public class QueryBuilderMySQLTest {
         QueryBuilder builder = new QueryBuilder().table("test").where("test", 1).orWhere("one", 2);
         Assert.assertEquals("SELECT * FROM `test` WHERE `test` = ? OR `one` = ?", builder.toSql());
     }
+
+    @Test
+    public void testWhereNull(){
+        QueryBuilder builder = new QueryBuilder().table("test").whereNull("column");
+        Assert.assertEquals("SELECT * FROM `test` WHERE `column` IS NULL", builder.toSql());
+    }
+
+    @Test
+    public void testWhereIn(){
+        QueryBuilder builder = new QueryBuilder().table("test").whereIn("test", new String[]{"1", "2", "3"});
+        Assert.assertEquals("SELECT * FROM `test` WHERE `test` IN (?, ?, ?)", builder.toSql());
+    }
 }

@@ -3,14 +3,15 @@ package com.mrkirby153.bfs.sql.grammars;
 import com.mrkirby153.bfs.sql.QueryBuilder;
 import com.mrkirby153.bfs.sql.elements.Pair;
 import com.mrkirby153.bfs.sql.elements.WhereElement;
-import com.mrkirby153.bfs.sql.elements.WhereNullElemenet;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 public class MySqlGrammar implements Grammar {
 
@@ -34,18 +35,14 @@ public class MySqlGrammar implements Grammar {
     }
 
     @Override
-    public void bindSelect(QueryBuilder builder, PreparedStatement statement) {
-        bindWheres(builder, statement, 1);
-    }
-
-    @Override
     public String compileUpdate(QueryBuilder builder, Pair... pairs) {
         String table = wrap(builder.getTable());
 
         StringBuilder columnBuilder = new StringBuilder();
 
         for (Pair p : pairs) {
-            columnBuilder.append(wrap(p.getColumn())).append(" = ?, ");
+            columnBuilder.append(wrap(p.getColumn())).append(" = ").append(parameter(p.getValue()))
+                .append(", ");
         }
 
         String s = columnBuilder.toString();
@@ -53,19 +50,6 @@ public class MySqlGrammar implements Grammar {
             .compileWheres(builder);
     }
 
-    @Override
-    public void bindUpdate(QueryBuilder builder, PreparedStatement statement, Pair... pairs) {
-        int index = 1;
-        for (Pair p : pairs) {
-            try {
-                statement.setObject(index++, p.getValue());
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        }
-
-        index = bindWheres(builder, statement, index);
-    }
 
     @Override
     public String compileDelete(QueryBuilder builder) {
@@ -74,43 +58,31 @@ public class MySqlGrammar implements Grammar {
     }
 
     @Override
-    public void bindDelete(QueryBuilder builder, PreparedStatement statement) {
-        bindWheres(builder, statement, 1);
-    }
-
-    @Override
     public String compileExists(QueryBuilder builder) {
         return "SELECT EXISTS(" + compileSelect(builder) + ") as `exists`";
     }
 
     @Override
-    public void bindExists(QueryBuilder builder, PreparedStatement statement) {
-        this.bindSelect(builder, statement);
-    }
-
-    @Override
     public String compileInsert(QueryBuilder builder, Pair... data) {
         StringBuilder cols = new StringBuilder();
-        StringBuilder placeholders = new StringBuilder();
         for (int i = 0; i < data.length; i++) {
             cols.append(wrap(data[i].getColumn()));
-            placeholders.append("?");
             if (i + 1 < data.length) {
                 cols.append(", ");
-                placeholders.append(", ");
             }
         }
 
-        return "INSERT INTO `" + builder.getTable() + "`(" + cols + ") VALUES (" + placeholders
+        return "INSERT INTO `" + builder.getTable() + "`(" + cols + ") VALUES (" + parametarize(
+            data)
             + ")";
     }
 
     @Override
-    public void bindInsert(QueryBuilder builder, PreparedStatement statement, Pair... data) {
-        int index = 1;
-        for (Pair p : data) {
+    public void bind(QueryBuilder builder, PreparedStatement statement) {
+        int start = 1;
+        for (Object o : builder.getBindings()) {
             try {
-                statement.setObject(index++, p.getValue());
+                statement.setObject(start++, o);
             } catch (SQLException e) {
                 e.printStackTrace();
             }
@@ -236,21 +208,63 @@ public class MySqlGrammar implements Grammar {
      */
     private String appendWheres(ArrayList<WhereElement> e) {
         StringBuilder s = new StringBuilder();
-        for(int i = 0; i < e.size(); i++){
+        for (int i = 0; i < e.size(); i++) {
             WhereElement g = e.get(i);
-            if(i > 0){
-                s.append(g.getBool());
+            if (i > 0) {
+                Object operator = g.get("boolean");
+                s.append(operator != null ? operator : "AND");
                 s.append(" ");
             }
-            s.append(wrap(g.getField())).append(" ");
-            if(g instanceof WhereNullElemenet){
-                s.append(((WhereNullElemenet) g).isNot()? "IS NOT " : "IS ").append(g.getBinding());
-            } else {
-                s.append(g.getOperation()).append(" ?");
+            String type = g.getType();
+            try {
+                Method m = this.getClass().getDeclaredMethod("where" + type, WhereElement.class);
+                String result = m.invoke(this, g).toString();
+                s.append(result);
+            } catch (NoSuchMethodException e1) {
+                System.out.println("No where method for type " + type);
+            } catch (IllegalAccessException | InvocationTargetException e1) {
+                e1.printStackTrace();
             }
             s.append(" ");
         }
         return s.toString();
+    }
+
+    private String whereBasic(WhereElement e) {
+        return wrap(e.get("column").toString()) + " " + e.get("operator") + " " + parameter(
+            e.get("value"));
+    }
+
+    private String whereNull(WhereElement e) {
+        return wrap(e.get("column").toString()) + " IS NULL";
+    }
+
+    private String whereNotNull(WhereElement e) {
+        return wrap(e.get("column").toString()) + " IS NOT NULL";
+    }
+
+    private String whereIn(WhereElement e) {
+        return wrap(e.get("column").toString()) + " IN (" + parametarize((Object[]) e.get("values"))
+            + ")";
+    }
+
+    private String whereNotIn(WhereElement e) {
+        return wrap(e.get("column").toString()) + " NOT IN (" + parametarize(
+            (Object[]) e.get("values")) + ")";
+    }
+
+    private String whereSub(WhereElement e) {
+        return wrap(
+            e.get("column").toString()) + " IN (" + ((QueryBuilder) e.get("query")).getGrammar()
+                .compileSelect(
+                    (QueryBuilder) e.get("query")) + ")";
+    }
+
+    private String whereNotSub(WhereElement e){
+        return wrap(
+            e.get("column").toString()) + " NOT IN (" + ((QueryBuilder) e.get("query")).getGrammar()
+            .compileSelect(
+                (QueryBuilder) e.get("query")) + ")";
     }
 
     /**
@@ -264,15 +278,7 @@ public class MySqlGrammar implements Grammar {
      */
     private int bindWheres(QueryBuilder builder, PreparedStatement statement, int startIndex) {
         AtomicInteger a = new AtomicInteger(startIndex);
-        builder.getWheres().forEach(w -> {
-            if(w instanceof WhereNullElemenet)
-                return;
-            try {
-                statement.setObject(a.getAndIncrement(), w.getBinding());
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        });
+
         return a.get();
     }
 
@@ -297,5 +303,14 @@ public class MySqlGrammar implements Grammar {
      */
     private String wrap(String s) {
         return "`" + s + "`";
+    }
+
+    private String parametarize(Object[] values) {
+        return String
+            .join(", ", Arrays.stream(values).map(this::parameter).collect(Collectors.toList()));
+    }
+
+    private String parameter(Object value) {
+        return "?";
     }
 }
