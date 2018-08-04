@@ -101,14 +101,62 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
     }
 
     @Override
-    public ModelQueryBuilder<T> whereNull(String column, boolean not) {
-        super.whereNull(column, not);
+    public ModelQueryBuilder<T> whereNull(String column, boolean not, String bool) {
+        super.whereNull(column, not, bool);
         return this;
     }
 
     @Override
     public ModelQueryBuilder<T> whereNull(String column) {
         super.whereNull(column);
+        return this;
+    }
+
+    @Override
+    public ModelQueryBuilder<T> whereNull(String column, String bool) {
+        super.whereNull(column, bool);
+        return this;
+    }
+
+    @Override
+    public ModelQueryBuilder<T> whereIn(String column, Object[] values, String bool) {
+        super.whereIn(column, values, bool);
+        return this;
+    }
+
+    @Override
+    public ModelQueryBuilder<T> whereIn(String column, Object[] values) {
+        super.whereIn(column, values);
+        return this;
+    }
+
+    @Override
+    public ModelQueryBuilder<T> whereNotIn(String column, Object[] values, String bool) {
+        super.whereNotIn(column, values, bool);
+        return this;
+    }
+
+    @Override
+    public ModelQueryBuilder<T> whereNotIn(String column, Object[] values) {
+        super.whereNotIn(column, values);
+        return this;
+    }
+
+    @Override
+    public ModelQueryBuilder<T> whereSub(String column, QueryBuilder builder, boolean not, String bool) {
+        super.whereSub(column, builder, not, bool);
+        return this;
+    }
+
+    @Override
+    public ModelQueryBuilder<T> whereSub(String column, QueryBuilder builder, String bool) {
+        super.whereSub(column, builder, bool);
+        return this;
+    }
+
+    @Override
+    public ModelQueryBuilder<T> whereSub(String column, QueryBuilder builder) {
+        super.whereSub(column, builder);
         return this;
     }
 

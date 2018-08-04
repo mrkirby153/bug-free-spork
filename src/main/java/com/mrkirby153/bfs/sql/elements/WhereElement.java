@@ -1,36 +1,30 @@
 package com.mrkirby153.bfs.sql.elements;
 
+import com.mrkirby153.bfs.Tuple;
+
+import java.util.HashMap;
+
 /**
  * A <code>WHERE</code> element in the query
  */
 public class WhereElement {
 
-    private String operation;
-    private String field;
-    private Object object;
-    private String bool;
+    private String type;
 
-    public WhereElement(String operation, String field, Object object, String bool) {
-        this.operation = operation;
-        this.field = field;
-        this.object = object;
-        this.bool = bool;
+    private HashMap<String, Object> data = new HashMap<>();
+
+    public WhereElement(String type, Tuple<String, Object>... data) {
+        this.type = type;
+        for (Tuple<String, Object> t : data) {
+            this.data.put(t.first, t.second);
+        }
     }
 
-    public String getOperation() {
-        return operation;
+    public Object get(String key) {
+        return data.get(key);
     }
 
-    public String getField() {
-        return field;
-    }
-
-    public Object getBinding(){
-        return this.object;
-    }
-
-    public String getBool() {
-
-        return bool;
+    public String getType() {
+        return type;
     }
 }

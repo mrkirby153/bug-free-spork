@@ -1,12 +1,12 @@
 package com.mrkirby153.bfs.sql;
 
 import com.mrkirby153.bfs.ConnectionFactory;
+import com.mrkirby153.bfs.Tuple;
 import com.mrkirby153.bfs.sql.elements.JoinElement;
 import com.mrkirby153.bfs.sql.elements.JoinElement.Type;
 import com.mrkirby153.bfs.sql.elements.OrderElement;
 import com.mrkirby153.bfs.sql.elements.Pair;
 import com.mrkirby153.bfs.sql.elements.WhereElement;
-import com.mrkirby153.bfs.sql.elements.WhereNullElemenet;
 import com.mrkirby153.bfs.sql.grammars.Grammar;
 import com.mrkirby153.bfs.sql.grammars.MySqlGrammar;
 import org.intellij.lang.annotations.Language;
@@ -21,6 +21,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 
 /**
@@ -63,6 +64,8 @@ public class QueryBuilder {
      * A collection of various join statements
      */
     private ArrayList<JoinElement> joins = new ArrayList<>();
+
+    private HashMap<String, ArrayList<Object>> bindings = new HashMap<>();
 
     /**
      * The limit of the query to return
@@ -173,6 +176,21 @@ public class QueryBuilder {
         return distinct;
     }
 
+    public void addBinding(String section, Object data) {
+        ArrayList<Object> bindings = this.bindings.computeIfAbsent(section, k -> new ArrayList<>());
+        bindings.add(data);
+    }
+
+    public void addBinding(Object data) {
+        this.addBinding("where", data);
+    }
+
+    public List<Object> getBindings() {
+        List<Object> bindings = new ArrayList<>();
+        this.bindings.forEach((k, v) -> bindings.addAll(v));
+        return bindings;
+    }
+
     /**
      * Adds a <code>WHERE</code> clause to the query
      *
@@ -191,11 +209,14 @@ public class QueryBuilder {
         }
         // Special override for null values
         if (value == null) {
-            this.whereNull(column, operator.equalsIgnoreCase("!="));
+            this.whereNull(column, operator.equalsIgnoreCase("!="), bool);
             return this;
         }
-        WhereElement e = new WhereElement(operator, column, value, bool);
+        WhereElement e = new WhereElement("Basic", new Tuple<>("column", column),
+            new Tuple<>("operator", operator), new Tuple<>("boolean", bool),
+            new Tuple<>("value", value));
         this.wheres.add(e);
+        this.addBinding("where", value);
         return this;
     }
 
@@ -212,26 +233,181 @@ public class QueryBuilder {
         return this.where(column, operator, value, "AND");
     }
 
+    /**
+     * Adds a <code>WHERE</code> clause to the query
+     *
+     * @param column The column to use in the query
+     * @param value  The value to compare against
+     *
+     * @return The query builder
+     */
     public QueryBuilder where(String column, Object value) {
         return this.where(column, "=", value);
     }
 
-    public QueryBuilder orWhere(String column, String operator, Object value){
+    /**
+     * Adds a <code>WHERE</code> clause with a boolean separator of OR to the query
+     *
+     * @param column   The column to use in the query
+     * @param operator The operator to use
+     * @param value    The value to compare against
+     *
+     * @return The query builder
+     */
+    public QueryBuilder orWhere(String column, String operator, Object value) {
         return this.where(column, operator, value, "OR");
     }
 
-    public QueryBuilder orWhere(String column, Object value){
+    /**
+     * Adds a <code>WHERE</code> clause with a boolean separator of OR to the query
+     *
+     * @param column The column to use in the query
+     * @param value  The value to compare against
+     *
+     * @return The query builder
+     */
+    public QueryBuilder orWhere(String column, Object value) {
         return this.where(column, "=", value, "OR");
     }
 
-    public QueryBuilder whereNull(String column, boolean not) {
-        WhereNullElemenet e = new WhereNullElemenet(column, not, "AND");
+    /**
+     * Adds a WHERE clause checking if a column is null
+     *
+     * @param column The column
+     * @param not    If the column should be not null
+     * @param bool   The boolean separator
+     *
+     * @return The query builder
+     */
+    public QueryBuilder whereNull(String column, boolean not, String bool) {
+        WhereElement e = new WhereElement(not ? "NotNull" : "Null", new Tuple<>("column", column),
+            new Tuple<>("boolean", bool));
         this.wheres.add(e);
         return this;
     }
 
+    /**
+     * Adds a where clause checking if a column is null
+     *
+     * @param column The column
+     *
+     * @return The query builder
+     */
     public QueryBuilder whereNull(String column) {
-        return whereNull(column, false);
+        return whereNull(column, "AND");
+    }
+
+    /**
+     * Adds a where clause checking if a columns is null
+     *
+     * @param column The column
+     * @param bool   The boolean separator
+     *
+     * @return The query builder
+     */
+    public QueryBuilder whereNull(String column, String bool) {
+        return whereNull(column, false, bool);
+    }
+
+    /**
+     * Adds a WHERE IN clause to the query
+     *
+     * @param column The column
+     * @param values The values the column must be equal to
+     * @param bool   The boolean separator
+     *
+     * @return The query builder
+     */
+    public QueryBuilder whereIn(String column, Object[] values, String bool) {
+        WhereElement e = new WhereElement("In", new Tuple<>("column", column),
+            new Tuple<>("values", values), new Tuple<>("boolean", bool));
+        Arrays.stream(values).forEach(this::addBinding);
+        this.wheres.add(e);
+        return this;
+    }
+
+    /**
+     * Adds a WHERE IN clause to the query
+     *
+     * @param column The column
+     * @param values The values of the column
+     *
+     * @return The query builder
+     */
+    public QueryBuilder whereIn(String column, Object[] values) {
+        return this.whereIn(column, values, "AND");
+    }
+
+    /**
+     * Adds a WHERE NOT IN clause to the query
+     *
+     * @param column THe column
+     * @param values The values of the column
+     * @param bool   The boolean separator
+     *
+     * @return The query builder
+     */
+    public QueryBuilder whereNotIn(String column, Object[] values, String bool) {
+        WhereElement e = new WhereElement("NotIn", new Tuple<>("column", column),
+            new Tuple<>("values", values), new Tuple<>("boolean", bool));
+        Arrays.stream(values).forEach(this::addBinding);
+        this.wheres.add(e);
+        return this;
+    }
+
+    /**
+     * Adds a WHERE NOT IN clause to the query
+     *
+     * @param column The column
+     * @param values The values of the column
+     *
+     * @return The query builder
+     */
+    public QueryBuilder whereNotIn(String column, Object[] values) {
+        return this.whereNotIn(column, values, "AND");
+    }
+
+    /**
+     * Adds a where sub-query to the query
+     *
+     * @param column  The column
+     * @param builder The query to add
+     * @param not     If it should exclude the values returned by the previous query
+     * @param bool    The boolean separator
+     *
+     * @return The query builder
+     */
+    public QueryBuilder whereSub(String column, QueryBuilder builder, boolean not, String bool) {
+        WhereElement e = new WhereElement(not ? "NotSub" : "Sub", new Tuple<>("query", builder),
+            new Tuple<>("boolean", bool), new Tuple<>("column", column));
+        builder.getBindings().forEach(this::addBinding);
+        this.wheres.add(e);
+        return this;
+    }
+
+    /**
+     * Adds a where sub-query to the query
+     *
+     * @param column  The column
+     * @param builder The query to add
+     * @param bool    The boolean separator
+     *
+     * @return The query builder
+     */
+    public QueryBuilder whereSub(String column, QueryBuilder builder, String bool) {
+        return whereSub(column, builder, false, bool);
+    }
+
+    /**
+     * Adds a where sub-query to the query
+     *
+     * @param column  The column
+     * @param builder The query to add
+     *
+     * @return The query builder
+     */
+    public QueryBuilder whereSub(String column, QueryBuilder builder) {
+        return whereSub(column, builder, "AND");
     }
 
     /**
@@ -279,10 +455,11 @@ public class QueryBuilder {
      * @return The amount of rows returned or -1 if the query fails
      */
     public int update(Pair... data) {
+        Arrays.stream(data).map(Pair::getValue).forEach(d -> addBinding("update", data));
         String query = this.grammar.compileUpdate(this, data);
         try (Connection con = connectionFactory.getConnection();
             PreparedStatement statement = con.prepareStatement(query)) {
-            grammar.bindUpdate(this, statement, data);
+            grammar.bind(this, statement);
             if (logQueries) {
                 logger.debug("Executing UPDATE: " + statement);
             }
@@ -302,7 +479,7 @@ public class QueryBuilder {
         String query = this.grammar.compileSelect(this);
         try (Connection con = connectionFactory.getConnection();
             PreparedStatement statement = con.prepareStatement(query)) {
-            grammar.bindSelect(this, statement);
+            grammar.bind(this, statement);
 
             if (logQueries) {
                 logger.debug("Executing SELECT: " + statement);
@@ -311,6 +488,7 @@ public class QueryBuilder {
                 return parse(rs);
             }
         } catch (SQLException e) {
+            System.out.println(query);
             e.printStackTrace();
         }
         return new ArrayList<>();
@@ -352,7 +530,7 @@ public class QueryBuilder {
         String query = this.grammar.compileDelete(this);
         try (Connection con = connectionFactory.getConnection();
             PreparedStatement ps = con.prepareStatement(query)) {
-            this.grammar.bindDelete(this, ps);
+            this.grammar.bind(this, ps);
             if (logQueries) {
                 logger.debug("Executing DELETE: " + ps);
             }
@@ -372,8 +550,7 @@ public class QueryBuilder {
         String query = this.grammar.compileExists(this);
         try (Connection con = connectionFactory.getConnection();
             PreparedStatement ps = con.prepareStatement(query)) {
-
-            this.grammar.bindExists(this, ps);
+            this.grammar.bind(this, ps);
 
             if (logQueries) {
                 logger.debug("Executing EXISTS: " + ps);
@@ -395,10 +572,11 @@ public class QueryBuilder {
      * @param data The data to insert
      */
     public void insert(Pair... data) {
+        Arrays.stream(data).map(Pair::getValue).forEach(d -> addBinding("insert", d));
         String query = this.grammar.compileInsert(this, data);
         try (Connection con = connectionFactory.getConnection();
             PreparedStatement ps = con.prepareStatement(query)) {
-            this.grammar.bindInsert(this, ps, data);
+            this.grammar.bind(this, ps);
             if (logQueries) {
                 logger.debug("Executing INSERT: " + ps);
             }
@@ -416,10 +594,11 @@ public class QueryBuilder {
      * @return The primary key
      */
     public long insertWithGenerated(Pair... data) {
+        Arrays.stream(data).map(Pair::getColumn).forEach(d -> addBinding("insert", d));
         String query = this.grammar.compileInsert(this, data);
         try (Connection con = connectionFactory.getConnection();
             PreparedStatement ps = con.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
-            this.grammar.bindInsert(this, ps, data);
+            this.grammar.bind(this, ps);
             if (logQueries) {
                 logger.debug("Executing INSERT (with generated): " + ps);
             }

@@ -19,14 +19,6 @@ public interface Grammar {
      */
     String compileSelect(QueryBuilder builder);
 
-    /**
-     * Binds all the objects to the statement
-     *
-     * @param builder   The Query builder
-     * @param statement The statement to bind into
-     */
-    void bindSelect(QueryBuilder builder, PreparedStatement statement);
-
 
     /**
      * Compiles an update to the statement
@@ -36,15 +28,6 @@ public interface Grammar {
      * @return The compiled update prepared statement
      */
     String compileUpdate(QueryBuilder builder, Pair... pairs);
-
-    /**
-     * Binds the objects to a the prepared statement
-     *
-     * @param builder   The query builder
-     * @param statement The statement
-     * @param pairs     The data to bind
-     */
-    void bindUpdate(QueryBuilder builder, PreparedStatement statement, Pair... pairs);
 
 
     /**
@@ -57,14 +40,6 @@ public interface Grammar {
     String compileDelete(QueryBuilder builder);
 
     /**
-     * Binds the obejcts to a delete statement
-     *
-     * @param builder   The builder
-     * @param statement The statement
-     */
-    void bindDelete(QueryBuilder builder, PreparedStatement statement);
-
-    /**
      * Compiles an exists query
      *
      * @param builder The builder
@@ -72,14 +47,6 @@ public interface Grammar {
      * @return The exists query
      */
     String compileExists(QueryBuilder builder);
-
-    /**
-     * Binds objects to an exists query
-     *
-     * @param builder   The builder
-     * @param statement The statement
-     */
-    void bindExists(QueryBuilder builder, PreparedStatement statement);
 
     /**
      * Compiles an insert statement
@@ -91,12 +58,5 @@ public interface Grammar {
      */
     String compileInsert(QueryBuilder builder, Pair... data);
 
-    /**
-     * Bind objects in an insert statement
-     *
-     * @param builder   The builder
-     * @param statement The statement
-     * @param data      The data
-     */
-    void bindInsert(QueryBuilder builder, PreparedStatement statement, Pair... data);
+    void bind(QueryBuilder builder, PreparedStatement statement);
 }
