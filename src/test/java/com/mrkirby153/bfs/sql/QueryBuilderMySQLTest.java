@@ -76,14 +76,14 @@ public class QueryBuilderMySQLTest {
     }
 
     @Test
-    public void testSelectTable(){
+    public void testSelectTable() {
         QueryBuilder builder = new QueryBuilder().table("testing").select("table.test");
         Assert.assertEquals(1, builder.getColumns().length);
         Assert.assertEquals("SELECT `table`.`test` FROM `testing`", builder.toSql());
     }
 
     @Test
-    public void testWithWildcard(){
+    public void testWithWildcard() {
         QueryBuilder builder = new QueryBuilder().table("testing").select("table.*");
         Assert.assertEquals("SELECT `table`.* FROM `testing`", builder.toSql());
     }
@@ -156,20 +156,33 @@ public class QueryBuilderMySQLTest {
     }
 
     @Test
-    public void testOrWheres(){
+    public void testOrWheres() {
         QueryBuilder builder = new QueryBuilder().table("test").where("test", 1).orWhere("one", 2);
         Assert.assertEquals("SELECT * FROM `test` WHERE `test` = ? OR `one` = ?", builder.toSql());
     }
 
     @Test
-    public void testWhereNull(){
+    public void testWhereNull() {
         QueryBuilder builder = new QueryBuilder().table("test").whereNull("column");
         Assert.assertEquals("SELECT * FROM `test` WHERE `column` IS NULL", builder.toSql());
     }
 
     @Test
-    public void testWhereIn(){
-        QueryBuilder builder = new QueryBuilder().table("test").whereIn("test", new String[]{"1", "2", "3"});
+    public void testWhereIn() {
+        QueryBuilder builder = new QueryBuilder().table("test")
+            .whereIn("test", new String[]{"1", "2", "3"});
         Assert.assertEquals("SELECT * FROM `test` WHERE `test` IN (?, ?, ?)", builder.toSql());
+    }
+
+    @Test
+    public void testWhereTable() {
+        QueryBuilder qb = new QueryBuilder().table("test").where("testing.one", "=", 2);
+        Assert.assertEquals("SELECT * FROM `test` WHERE `testing`.`one` = ?", qb.toSql());
+    }
+
+    @Test
+    public void testSelectColumns() {
+        QueryBuilder builder = new QueryBuilder().table("test").select("testing.one");
+        Assert.assertEquals("SELECT `testing`.`one` FROM `test`", builder.toSql());
     }
 }

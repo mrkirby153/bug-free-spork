@@ -11,6 +11,8 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class MySqlGrammar implements Grammar {
@@ -41,7 +43,8 @@ public class MySqlGrammar implements Grammar {
         StringBuilder columnBuilder = new StringBuilder();
 
         for (Pair p : pairs) {
-            columnBuilder.append(wrap(p.getColumn())).append(" = ").append(parameter(p.getValue()))
+            columnBuilder.append(wrapColumn(p.getColumn())).append(" = ")
+                .append(parameter(p.getValue()))
                 .append(", ");
         }
 
@@ -66,7 +69,7 @@ public class MySqlGrammar implements Grammar {
     public String compileInsert(QueryBuilder builder, Pair... data) {
         StringBuilder cols = new StringBuilder();
         for (int i = 0; i < data.length; i++) {
-            cols.append(wrap(data[i].getColumn()));
+            cols.append(wrapColumn(data[i].getColumn()));
             if (i + 1 < data.length) {
                 cols.append(", ");
             }
@@ -162,8 +165,7 @@ public class MySqlGrammar implements Grammar {
         StringBuilder clause = new StringBuilder();
         if (builder.getOrders().size() > 0) {
             builder.getOrders().forEach(e -> {
-                clause.append("`").append(e.getColumn()).append("` ").append(e.getDirection())
-                    .append(", ");
+                clause.append(wrapColumn(e.getColumn())).append(" ").append(e.getDirection()).append(", ");
             });
             String orderClause = clause.toString();
             return "ORDER BY " + orderClause.substring(0, orderClause.length() - 2);
@@ -231,36 +233,37 @@ public class MySqlGrammar implements Grammar {
     }
 
     private String whereBasic(WhereElement e) {
-        return wrap(e.get("column").toString()) + " " + e.get("operator") + " " + parameter(
+        return wrapColumn(e.get("column").toString()) + " " + e.get("operator") + " " + parameter(
             e.get("value"));
     }
 
     private String whereNull(WhereElement e) {
-        return wrap(e.get("column").toString()) + " IS NULL";
+        return wrapColumn(e.get("column").toString()) + " IS NULL";
     }
 
     private String whereNotNull(WhereElement e) {
-        return wrap(e.get("column").toString()) + " IS NOT NULL";
+        return wrapColumn(e.get("column").toString()) + " IS NOT NULL";
     }
 
     private String whereIn(WhereElement e) {
-        return wrap(e.get("column").toString()) + " IN (" + parametarize((Object[]) e.get("values"))
+        return wrapColumn(e.get("column").toString()) + " IN (" + parametarize(
+            (Object[]) e.get("values"))
             + ")";
     }
 
     private String whereNotIn(WhereElement e) {
-        return wrap(e.get("column").toString()) + " NOT IN (" + parametarize(
+        return wrapColumn(e.get("column").toString()) + " NOT IN (" + parametarize(
             (Object[]) e.get("values")) + ")";
     }
 
     private String whereSub(WhereElement e) {
         return wrap(
             e.get("column").toString()) + " IN (" + ((QueryBuilder) e.get("query")).getGrammar()
-                .compileSelect(
-                    (QueryBuilder) e.get("query")) + ")";
+            .compileSelect(
+                (QueryBuilder) e.get("query")) + ")";
     }
 
-    private String whereNotSub(WhereElement e){
+    private String whereNotSub(WhereElement e) {
         return wrap(
             e.get("column").toString()) + " NOT IN (" + ((QueryBuilder) e.get("query")).getGrammar()
             .compileSelect(
@@ -302,6 +305,9 @@ public class MySqlGrammar implements Grammar {
      * @return The string wrapped with `
      */
     private String wrap(String s) {
+        if (preWrapped.matcher(s).find()) {
+            return s;
+        }
         return "`" + s + "`";
     }
 
@@ -312,5 +318,23 @@ public class MySqlGrammar implements Grammar {
 
     private String parameter(Object value) {
         return "?";
+    }
+
+    private final Pattern columnPattern = Pattern.compile("(.*)\\.(.*)");
+    private final Pattern preWrapped = Pattern.compile("`.*`");
+
+    private String wrapColumn(String name) {
+        if (preWrapped.matcher(name).find()) {
+            return name; // The column is wrapped already, ignore.
+        }
+        Matcher matcher = columnPattern.matcher(name);
+        if (matcher.find()) {
+            String table = "`" + matcher.group(1) + "`";
+            String column =
+                matcher.group(2).equalsIgnoreCase("*") ? "*" : "`" + matcher.group(2) + "`";
+            return table + "." + column;
+        } else {
+            return "`" + name + "`";
+        }
     }
 }
