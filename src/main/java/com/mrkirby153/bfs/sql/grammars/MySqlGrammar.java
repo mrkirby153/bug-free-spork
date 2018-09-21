@@ -131,17 +131,7 @@ public class MySqlGrammar implements Grammar {
             for (int i = 0; i < builder.getColumns().length; i++) {
                 String col = builder.getColumns()[i];
 
-                String[] parts = col.split("\\.");
-                for (int j = 0; j < parts.length; j++) {
-                    if (parts[j].equalsIgnoreCase("*")) {
-                        s.append(parts[j]);
-                    } else {
-                        s.append(wrap(parts[j]));
-                    }
-                    if (j + 1 < parts.length) {
-                        s.append(".");
-                    }
-                }
+                s.append(wrapColumn(col));
                 if (i + 1 < builder.getColumns().length) {
                     s.append(", ");
                 }
@@ -257,14 +247,14 @@ public class MySqlGrammar implements Grammar {
     }
 
     private String whereSub(WhereElement e) {
-        return wrap(
+        return wrapColumn(
             e.get("column").toString()) + " IN (" + ((QueryBuilder) e.get("query")).getGrammar()
             .compileSelect(
                 (QueryBuilder) e.get("query")) + ")";
     }
 
     private String whereNotSub(WhereElement e) {
-        return wrap(
+        return wrapColumn(
             e.get("column").toString()) + " NOT IN (" + ((QueryBuilder) e.get("query")).getGrammar()
             .compileSelect(
                 (QueryBuilder) e.get("query")) + ")";
