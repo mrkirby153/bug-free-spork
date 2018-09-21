@@ -20,6 +20,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
@@ -645,5 +646,30 @@ public class Model implements HasTimestamps {
             e.printStackTrace();
         }
         return false;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(this.getClass().getSimpleName());
+        sb.append("[");
+        sb.append(this.getTable());
+        sb.append("]");
+        sb.append("(");
+        StringBuilder properties = new StringBuilder();
+        AtomicInteger index = new AtomicInteger(0);
+        this.getColumnData().forEach((key, val) -> {
+            properties.append(key).append("=");
+            if(val != null){
+                properties.append(val.toString());
+            } else {
+                properties.append("null");
+            }
+            if (index.getAndIncrement() + 1 < getColumnData().size()) {
+                properties.append(", ");
+            }
+        });
+        sb.append(properties.toString()).append(")");
+        return sb.toString();
     }
 }
