@@ -4,6 +4,7 @@ import com.mrkirby153.bfs.sql.QueryBuilder;
 import com.mrkirby153.bfs.sql.elements.Pair;
 
 import java.sql.PreparedStatement;
+import java.util.List;
 
 /**
  * A grammar that compiles a {@link QueryBuilder} into valid SQL
@@ -57,6 +58,16 @@ public interface Grammar {
      * @return The statement
      */
     String compileInsert(QueryBuilder builder, Pair... data);
+
+    /**
+     * Compiles an insert statement to insert multiple rows into the database
+     *
+     * @param builder The builder
+     * @param data    A list of a list of {@link Pair} of the data to insert
+     *
+     * @return The statement
+     */
+    String compileInsertMany(QueryBuilder builder, List<List<Pair>> data);
 
     void bind(QueryBuilder builder, PreparedStatement statement);
 }

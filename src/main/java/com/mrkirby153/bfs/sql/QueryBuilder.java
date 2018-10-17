@@ -21,6 +21,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 
@@ -629,6 +630,66 @@ public class QueryBuilder {
         }
         return -1;
     }
+
+    /**
+     * Inserts many elements into the database at a time
+     *
+     * @param data The data to insert
+     *
+     * @return The amount of items that were inserted
+     */
+    public int insertBulk(List<List<Pair>> data) {
+        return insertBulk(data, false).size();
+    }
+
+    public List<Long> insertBulkWithGenerated(List<List<Pair>> data){
+        return insertBulk(data, true);
+    }
+
+    /**
+     * Inserts many elements into the database at a time
+     *
+     * @param data          The data to insert
+     * @param withGenerated If generated values should be returned
+     *
+     * @return A list of generated ids, or a list of nulls
+     */
+    private List<Long> insertBulk(List<List<Pair>> data, boolean withGenerated) {
+        if (data.size() == 0) {
+            throw new IllegalArgumentException("Attempting to insert nothing!");
+        }
+        // Verify the data is valid
+        int colCount = data.get(0).size();
+        for (List<Pair> row : data) {
+            if (row.size() != colCount) {
+                throw new IllegalArgumentException(
+                    "Inconsistent column count. Expected " + colCount + " got " + row.size());
+            }
+        }
+        data.stream().flatMap(Collection::stream).map(Pair::getValue).forEach(d -> addBinding("insert", d));
+        String query = this.grammar.compileInsertMany(this, data);
+        try (Connection con = connectionFactory.getConnection();
+            PreparedStatement ps = con.prepareStatement(query,
+                withGenerated ? Statement.RETURN_GENERATED_KEYS : Statement.NO_GENERATED_KEYS)) {
+            this.grammar.bind(this, ps);
+            if (logQueries) {
+                logger
+                    .debug("Executing BULK INSERT (With generated: " + withGenerated + "): " + ps);
+            }
+            List<Long> generated = new ArrayList<>();
+            ps.executeLargeUpdate();
+            try (ResultSet rs = ps.getGeneratedKeys()) {
+                while (rs.next()) {
+                    generated.add(rs.getLong(1));
+                }
+                return generated;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return new ArrayList<>(data.size());
+    }
+
 
     /**
      * Adds a join statement to the query

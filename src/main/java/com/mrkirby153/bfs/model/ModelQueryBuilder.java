@@ -4,9 +4,11 @@ import com.mrkirby153.bfs.model.scopes.Scope;
 import com.mrkirby153.bfs.sql.DbRow;
 import com.mrkirby153.bfs.sql.QueryBuilder;
 import com.mrkirby153.bfs.sql.elements.JoinElement.Type;
+import com.mrkirby153.bfs.sql.elements.Pair;
 import com.mrkirby153.bfs.sql.grammars.Grammar;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
@@ -50,6 +52,33 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
             return null;
         }
         return results.get(0);
+    }
+
+    /**
+     * Inserts many models into the database
+     *
+     * @param data The data to insert
+     *
+     * @return A list of generated keys
+     */
+    public List<Long> insertMany(T[] data) {
+        List<List<Pair>> l = new ArrayList<>();
+        boolean incrementing = data[0].incrementing;
+        for (T t : data) {
+            t.updateTimestamps();
+            List<Pair> p = new ArrayList<>(Arrays.asList(t.getDataForInsert()));
+            l.add(p);
+            t.exists = true;
+        }
+        if (incrementing) {
+            List<Long> generated = this.insertBulkWithGenerated(l);
+            for (int i = 0; i < generated.size(); i++) {
+                data[i].setData(data[i].getPrimaryKey(), generated.get(i));
+            }
+            return generated;
+        } else {
+            return new ArrayList<>(data.length);
+        }
     }
 
     @Override

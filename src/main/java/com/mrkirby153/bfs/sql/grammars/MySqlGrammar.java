@@ -10,7 +10,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -75,9 +75,32 @@ public class MySqlGrammar implements Grammar {
             }
         }
 
-        return "INSERT INTO `" + builder.getTable() + "`(" + cols + ") VALUES (" + parametarize(
+        return "INSERT INTO `" + builder.getTable() + "`(" + cols + ") VALUES (" + parameterize(
             data)
             + ")";
+    }
+
+    @Override
+    public String compileInsertMany(QueryBuilder builder, List<List<Pair>> data) {
+        StringBuilder cols = new StringBuilder();
+        List<Pair> firstRow = data.get(0);
+        for (int i = 0; i < firstRow.size(); i++) {
+            cols.append(wrapColumn(firstRow.get(i).getColumn()));
+            if (i + 1 < firstRow.size()) {
+                cols.append(", ");
+            }
+        }
+        StringBuilder values = new StringBuilder();
+        for (int i = 0; i < data.size(); i++) {
+            values.append("(");
+            values.append(parameterize(
+                data.get(i).stream().map(Pair::getValue).toArray(Object[]::new)));
+            values.append(")");
+            if (i + 1 < data.size()) {
+                values.append(", ");
+            }
+        }
+        return "INSERT INTO `" + builder.getTable() + "` (" + cols + ") VALUES " + values;
     }
 
     @Override
@@ -155,7 +178,8 @@ public class MySqlGrammar implements Grammar {
         StringBuilder clause = new StringBuilder();
         if (builder.getOrders().size() > 0) {
             builder.getOrders().forEach(e -> {
-                clause.append(wrapColumn(e.getColumn())).append(" ").append(e.getDirection()).append(", ");
+                clause.append(wrapColumn(e.getColumn())).append(" ").append(e.getDirection())
+                    .append(", ");
             });
             String orderClause = clause.toString();
             return "ORDER BY " + orderClause.substring(0, orderClause.length() - 2);
@@ -236,13 +260,13 @@ public class MySqlGrammar implements Grammar {
     }
 
     private String whereIn(WhereElement e) {
-        return wrapColumn(e.get("column").toString()) + " IN (" + parametarize(
+        return wrapColumn(e.get("column").toString()) + " IN (" + parameterize(
             (Object[]) e.get("values"))
             + ")";
     }
 
     private String whereNotIn(WhereElement e) {
-        return wrapColumn(e.get("column").toString()) + " NOT IN (" + parametarize(
+        return wrapColumn(e.get("column").toString()) + " NOT IN (" + parameterize(
             (Object[]) e.get("values")) + ")";
     }
 
@@ -258,21 +282,6 @@ public class MySqlGrammar implements Grammar {
             e.get("column").toString()) + " NOT IN (" + ((QueryBuilder) e.get("query")).getGrammar()
             .compileSelect(
                 (QueryBuilder) e.get("query")) + ")";
-    }
-
-    /**
-     * Binds the where element data to the statement
-     *
-     * @param builder    The query builder
-     * @param statement  The statement
-     * @param startIndex The parameter start index in the query
-     *
-     * @return The end index
-     */
-    private int bindWheres(QueryBuilder builder, PreparedStatement statement, int startIndex) {
-        AtomicInteger a = new AtomicInteger(startIndex);
-
-        return a.get();
     }
 
 
@@ -301,7 +310,7 @@ public class MySqlGrammar implements Grammar {
         return "`" + s + "`";
     }
 
-    private String parametarize(Object[] values) {
+    private String parameterize(Object[] values) {
         return String
             .join(", ", Arrays.stream(values).map(this::parameter).collect(Collectors.toList()));
     }

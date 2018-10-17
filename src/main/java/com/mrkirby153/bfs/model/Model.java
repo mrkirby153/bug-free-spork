@@ -366,12 +366,14 @@ public class Model implements HasTimestamps {
             .update(getDirtyDataAsPairs().toArray(new Pair[0]));
     }
 
+
     /**
-     * Creates the model in the database
+     * Gets the data with columns removed
+     *
+     * @return The data
      */
-    public void create() {
-        this.updateTimestamps();
-        Pair[] data = getDataAsPairs().stream().filter(pair -> {
+    protected Pair[] getDataForInsert() {
+        return getDataAsPairs().stream().filter(pair -> {
             // Remove the updated_at and created_at field if they're not dirty and the default
             if (!timestamps) {
                 if (pair.getColumn().equalsIgnoreCase(getCreatedAt())) {
@@ -387,6 +389,14 @@ public class Model implements HasTimestamps {
             }
             return true;
         }).toArray(Pair[]::new);
+    }
+
+    /**
+     * Creates the model in the database
+     */
+    public void create() {
+        this.updateTimestamps();
+        Pair[] data = getDataForInsert();
         ModelQueryBuilder modelQueryBuilder = newQueryWithoutScopes();
         if (this.incrementing) {
             long generated = modelQueryBuilder.insertWithGenerated(data);
@@ -660,7 +670,7 @@ public class Model implements HasTimestamps {
         AtomicInteger index = new AtomicInteger(0);
         this.getColumnData().forEach((key, val) -> {
             properties.append(key).append("=");
-            if(val != null){
+            if (val != null) {
                 properties.append(val.toString());
             } else {
                 properties.append("null");
