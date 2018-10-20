@@ -1,6 +1,7 @@
 package com.mrkirby153.bfs.model.scopes;
 
 import com.mrkirby153.bfs.model.Model;
+import com.mrkirby153.bfs.model.ModelQueryBuilder;
 import com.mrkirby153.bfs.sql.QueryBuilder;
 
 /**
@@ -16,6 +17,13 @@ public interface Scope<T extends Model> {
      * @param builder  The query builder
      */
     void apply(T instance, QueryBuilder builder);
+
+    /**
+     * Extends the query builder
+     *
+     * @param builder The query builder to extend
+     */
+    void extend(ModelQueryBuilder<T> builder);
 
     /**
      * Returns the identifier of the scope

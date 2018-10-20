@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.function.Function;
 
 public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
 
@@ -24,6 +25,8 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
     private List<String> appliedScopes = new ArrayList<>();
 
     private HashMap<String, Scope> removedScopes = new HashMap<>();
+
+    private Function<ModelQueryBuilder<T>, Boolean> onDelete = null;
 
     public ModelQueryBuilder(Grammar grammar, Class<T> clazz) {
         super(grammar);
@@ -80,6 +83,24 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
             return generated;
         } else {
             return new ArrayList<>(data.length);
+        }
+    }
+
+    /**
+     * Override the query builder's default delete function. Currently only used by {@link SoftDeletingModel}
+     *
+     * @param function The function to invoke instead of the default delete
+     */
+    public void onDelete(Function<ModelQueryBuilder<T>, Boolean> function) {
+        this.onDelete = function;
+    }
+
+    @Override
+    public boolean delete() {
+        if (this.onDelete != null) {
+            return this.onDelete.apply(this);
+        } else {
+            return super.delete();
         }
     }
 

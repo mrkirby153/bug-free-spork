@@ -3,6 +3,7 @@ package com.mrkirby153.bfs.model;
 import com.mrkirby153.bfs.annotations.ApplyScopes;
 import com.mrkirby153.bfs.annotations.Table;
 import com.mrkirby153.bfs.model.scopes.Scope;
+import com.mrkirby153.bfs.model.scopes.ScopeUtils;
 
 import java.util.HashMap;
 
@@ -58,6 +59,7 @@ public class ModelUtils {
         ModelQueryBuilder<T> qb = new ModelQueryBuilder<>(Model.getDefaultGrammar(), clazz);
         for (Class<? extends Scope> scope : getScopes(clazz)) {
             qb.addScope(scope);
+            ScopeUtils.getScope(scope).extend(qb);
         }
         return qb;
     }
