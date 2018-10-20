@@ -280,7 +280,7 @@ public class QueryBuilder {
      *
      * @return The query builder
      */
-    public QueryBuilder whereNull(String column, boolean not, String bool) {
+    private QueryBuilder whereNull(String column, boolean not, String bool) {
         WhereElement e = new WhereElement(not ? "NotNull" : "Null", new Tuple<>("column", column),
             new Tuple<>("boolean", bool));
         this.wheres.add(e);
@@ -311,15 +311,26 @@ public class QueryBuilder {
     }
 
     /**
-     * Adds a where clause checking if a column is null
+     * Adds a where clause checking if a column is not null
      *
      * @param column The column
-     * @param not    If the column should be not null
+     * @param bool   The boolean separator
      *
      * @return The query builder
      */
-    public QueryBuilder whereNull(String column, boolean not) {
-        return whereNull(column, not, "AND");
+    public QueryBuilder whereNotNull(String column, String bool) {
+        return whereNull(column, true, bool);
+    }
+
+    /**
+     * Adds a where clause checking if a column is not null
+     *
+     * @param column The column
+     *
+     * @return The query builder
+     */
+    public QueryBuilder whereNotNull(String column) {
+        return whereNotNull(column, "AND");
     }
 
     /**
@@ -493,6 +504,7 @@ public class QueryBuilder {
         try (Connection con = connectionFactory.getConnection();
             PreparedStatement statement = con.prepareStatement(query)) {
             grammar.bind(this, statement);
+            System.out.println(statement);
 
             if (logQueries) {
                 logger.debug("Executing SELECT: " + statement);
@@ -642,7 +654,7 @@ public class QueryBuilder {
         return insertBulk(data, false).size();
     }
 
-    public List<Long> insertBulkWithGenerated(List<List<Pair>> data){
+    public List<Long> insertBulkWithGenerated(List<List<Pair>> data) {
         return insertBulk(data, true);
     }
 
@@ -666,7 +678,8 @@ public class QueryBuilder {
                     "Inconsistent column count. Expected " + colCount + " got " + row.size());
             }
         }
-        data.stream().flatMap(Collection::stream).map(Pair::getValue).forEach(d -> addBinding("insert", d));
+        data.stream().flatMap(Collection::stream).map(Pair::getValue)
+            .forEach(d -> addBinding("insert", d));
         String query = this.grammar.compileInsertMany(this, data);
         try (Connection con = connectionFactory.getConnection();
             PreparedStatement ps = con.prepareStatement(query,

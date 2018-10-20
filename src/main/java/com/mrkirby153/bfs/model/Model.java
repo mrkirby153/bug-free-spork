@@ -3,7 +3,6 @@ package com.mrkirby153.bfs.model;
 import com.mrkirby153.bfs.annotations.Column;
 import com.mrkirby153.bfs.annotations.PrimaryKey;
 import com.mrkirby153.bfs.annotations.Table;
-import com.mrkirby153.bfs.model.scopes.Scope;
 import com.mrkirby153.bfs.model.traits.HasTimestamps;
 import com.mrkirby153.bfs.sql.elements.Pair;
 import com.mrkirby153.bfs.sql.grammars.Grammar;
@@ -56,7 +55,6 @@ public class Model implements HasTimestamps {
      * The old state of the model
      */
     private transient HashMap<String, Object> oldState = new HashMap<>();
-    private transient HashMap<String, Scope> scopes = new HashMap<>();
 
     public Model() {
         discoverColumns();
@@ -114,6 +112,17 @@ public class Model implements HasTimestamps {
      */
     public static <T extends Model> ModelQueryBuilder<T> query(Class<T> modelClass) {
         return ModelUtils.getQueryBuilderWithScopes(modelClass);
+    }
+
+    /**
+     * Gets the first mode in the database
+     *
+     * @param modelClass The model class
+     *
+     * @return The model, or null if none exists
+     */
+    public static <T extends Model> T first(Class<T> modelClass) {
+        return ModelUtils.getQueryBuilderWithScopes(modelClass).first();
     }
 
     /**
@@ -421,24 +430,6 @@ public class Model implements HasTimestamps {
         ModelQueryBuilder q = new ModelQueryBuilder(defaultGrammar, this.getClass());
         q.table(this.getTable());
         return q;
-    }
-
-    /**
-     * Adds a scope to be applied to all queries
-     *
-     * @param scope The scope to add
-     */
-    protected void addScope(Scope scope, String name) {
-        this.scopes.put(name, scope);
-    }
-
-    /**
-     * Returns an immutable copy of scopes on the model
-     *
-     * @return The scopes
-     */
-    public HashMap<String, Scope> getScopes() {
-        return new HashMap<>(this.scopes);
     }
 
     /**

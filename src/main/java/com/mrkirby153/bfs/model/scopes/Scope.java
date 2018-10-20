@@ -4,9 +4,26 @@ import com.mrkirby153.bfs.model.Model;
 import com.mrkirby153.bfs.sql.QueryBuilder;
 
 /**
- * A transformation applied to all queries on a model
+ * A Scope is a modification to <code>SELECT</code> statements
+ * to provide additional constraints`
  */
 public interface Scope<T extends Model> {
 
-    void apply(QueryBuilder builder, T model);
+    /**
+     * Apply the scope to the {@link QueryBuilder}
+     *
+     * @param instance The instance of the model to apply the scopes on, if any
+     * @param builder  The query builder
+     */
+    void apply(T instance, QueryBuilder builder);
+
+    /**
+     * Returns the identifier of the scope
+     *
+     * @return The scope's identifier.
+     */
+    default String identifier() {
+        return this.getClass().getSimpleName().toLowerCase();
+    }
+
 }

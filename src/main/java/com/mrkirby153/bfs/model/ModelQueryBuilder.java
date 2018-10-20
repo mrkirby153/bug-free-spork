@@ -1,6 +1,7 @@
 package com.mrkirby153.bfs.model;
 
 import com.mrkirby153.bfs.model.scopes.Scope;
+import com.mrkirby153.bfs.model.scopes.ScopeUtils;
 import com.mrkirby153.bfs.sql.DbRow;
 import com.mrkirby153.bfs.sql.QueryBuilder;
 import com.mrkirby153.bfs.sql.elements.JoinElement.Type;
@@ -27,10 +28,11 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
     public ModelQueryBuilder(Grammar grammar, Class<T> clazz) {
         super(grammar);
         this.modelClass = clazz;
+        this.table(ModelUtils.getTable(clazz));
     }
 
     public List<T> get() {
-        applyScopes(); // Apply scopes to the query
+        applyScopes();
         List<DbRow> rows = this.query();
         List<T> results = new ArrayList<>();
         rows.forEach(row -> {
@@ -88,7 +90,7 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
     }
 
     @Override
-    public QueryBuilder from(String table) {
+    public ModelQueryBuilder<T> from(String table) {
         super.from(table);
         return this;
     }
@@ -130,12 +132,6 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
     }
 
     @Override
-    public ModelQueryBuilder<T> whereNull(String column, boolean not, String bool) {
-        super.whereNull(column, not, bool);
-        return this;
-    }
-
-    @Override
     public ModelQueryBuilder<T> whereNull(String column) {
         super.whereNull(column);
         return this;
@@ -148,8 +144,14 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
     }
 
     @Override
-    public ModelQueryBuilder<T> whereNull(String column, boolean not) {
-        super.whereNull(column, not);
+    public ModelQueryBuilder<T> whereNotNull(String column, String bool) {
+        super.whereNotNull(column, bool);
+        return this;
+    }
+
+    @Override
+    public ModelQueryBuilder<T> whereNotNull(String column) {
+        super.whereNotNull(column);
         return this;
     }
 
@@ -256,85 +258,48 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
     }
 
     /**
-     * Gets an immutable list of scopes on the model
+     * Adds a scope to the query builder
      *
-     * @return The scope list
-     */
-    public HashMap<String, Scope> getScopes() {
-        return new HashMap<>(scopes);
-    }
-
-    /**
-     * Gets an immutable list of all scopes that have been applied to the model
-     *
-     * @return The scopes
-     */
-    public List<String> getAppliedScopes() {
-        return new ArrayList<>(appliedScopes);
-    }
-
-    /**
-     * Gets an immutable list of all scopes that have been removed from the model
-     *
-     * @return The scopes
-     */
-    public HashMap<String, Scope> getRemovedScopes() {
-        return new HashMap<>(removedScopes);
-    }
-
-    /**
-     * Adds a list of scopes to the builder
-     *
-     * @param scopes The scopes to add
-     *
-     * @return The query builder
-     */
-    public ModelQueryBuilder<T> addScopes(HashMap<String, Scope> scopes) {
-        scopes.forEach((k, v) -> this.scopes.put(k, v));
-        return this;
-    }
-
-    /**
-     * Adds a scope
-     *
-     * @param name  The scope name
      * @param scope The scope
      *
      * @return The query builder
      */
-    public ModelQueryBuilder<T> addScope(String name, Scope scope) {
-        scopes.put(name, scope);
+    public ModelQueryBuilder<T> addScope(Class<? extends Scope> scope) {
+        this.scopes.put(ScopeUtils.getIdentifier(scope), ScopeUtils.getScope(scope));
         return this;
     }
 
     /**
-     * Removes a scope from the query
+     * Removes an applied scope from the query
      *
-     * @param name The name of the scope
+     * @param identifier The identifier of the scope
      *
      * @return The query builder
      */
-    public ModelQueryBuilder<T> withoutScope(String name) {
-        Scope s = this.scopes.remove(name);
+    public ModelQueryBuilder<T> withoutScope(String identifier) {
+        Scope s = this.scopes.remove(identifier);
         if (s != null) {
-            this.removedScopes.put(name, s);
+            this.removedScopes.put(identifier, s);
         }
         return this;
     }
 
     /**
-     * Apply all scopes to the
+     * Apply all scopes on the query builder
+     *
+     * @return The query builder
      */
     @SuppressWarnings("unchecked")
-    private void applyScopes() {
-        this.scopes.entrySet().stream().filter(it -> !appliedScopes.contains(it.getKey()))
-            .forEach(entry -> {
-                entry.getValue().apply(this, model);
-                this.appliedScopes.add(entry.getKey());
-            });
+    public ModelQueryBuilder<T> applyScopes() {
+        for (Scope scope : this.scopes.values()) {
+            scope.apply(this.model, this);
+            this.appliedScopes.add(scope.identifier());
+        }
+        return this;
     }
 
     protected void setModel(T model) {
         this.model = model;
+        this.table(model.getTable());
     }
 }

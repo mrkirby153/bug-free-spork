@@ -5,10 +5,14 @@ import com.mrkirby153.bfs.sql.QueryBuilder;
 
 public class SoftDeletingScope implements Scope<SoftDeletingModel> {
 
-    public static final String SCOPE_NAME = "soft_deleting";
+    public static String SCOPE_NAME = "soft_deletes";
+    @Override
+    public void apply(SoftDeletingModel instance, QueryBuilder builder) {
+        builder.whereNull("deleted_at");
+    }
 
     @Override
-    public void apply(QueryBuilder builder, SoftDeletingModel model) {
-        builder.whereNull("deleted_at");
+    public String identifier() {
+        return SCOPE_NAME;
     }
 }
