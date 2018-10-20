@@ -1,6 +1,5 @@
 package com.mrkirby153.bfs.model;
 
-import com.mrkirby153.bfs.Tuple;
 import com.mrkirby153.bfs.annotations.Column;
 import com.mrkirby153.bfs.annotations.PrimaryKey;
 import com.mrkirby153.bfs.annotations.Table;
@@ -64,22 +63,6 @@ public class Model implements HasTimestamps {
     }
 
     /**
-     * Gets a list of all the models matching the query
-     *
-     * @param modelClass The model class
-     * @param column     The column to query
-     * @param operator   The comparison to perform
-     * @param data       The data to check
-     *
-     * @return A list of models matching the query or an empty array if none exist
-     */
-    @Deprecated
-    public static <T extends Model> List<T> get(Class<T> modelClass, String column, String operator,
-        Object data) {
-        return get(modelClass, new ModelOption(column, operator, data));
-    }
-
-    /**
      * Gets the default {@link Grammar}
      *
      * @return The grammar
@@ -95,144 +78,6 @@ public class Model implements HasTimestamps {
      */
     public static void setDefaultGrammar(Grammar grammar) {
         defaultGrammar = grammar;
-    }
-
-    /**
-     * Gets a list of all the models matching the query
-     *
-     * @param modelClass The model class
-     * @param column     The column to query
-     * @param data       The data to check
-     *
-     * @return A list of models matching the query or an empty array if none exist
-     */
-    @Deprecated
-    public static <T extends Model> List<T> get(Class<T> modelClass, String column, Object data) {
-        return get(modelClass, new ModelOption(column, "=", data));
-    }
-
-    /**
-     * Gets all the elements matching the query
-     *
-     * @param modelClass The model class
-     * @param pairs      The comparisons to do
-     *
-     * @return A list of models or an empty array if none exist
-     */
-    @Deprecated
-    public static <T extends Model> List<T> get(Class<T> modelClass, ModelOption... pairs) {
-        ModelQueryBuilder<T> builder = ModelUtils.getQueryBuilderWithScopes(modelClass);
-        for (ModelOption option : pairs) {
-            builder.where(option.getColumn(), option.getOperator(), option.getData());
-        }
-        return builder.get();
-    }
-
-    /**
-     * Gets all the models in the database
-     *
-     * @param modelClass The model class
-     *
-     * @return A list of all models
-     */
-    public static <T extends Model> List<T> get(Class<T> modelClass) {
-        return get(modelClass, new ModelOption[0]);
-    }
-
-    /**
-     * Gets all the elements matching the query
-     *
-     * @param modelClass The model class
-     * @param tuples     The tuples (column/value pairs)
-     *
-     * @return A list of models or an empty array if none exist
-     */
-    @Deprecated
-    public static <T extends Model> List<T> get(Class<T> modelClass, Tuple<String, ?>... tuples) {
-        List<ModelOption> options = new ArrayList<>();
-        for (Tuple<String, ?> t : tuples) {
-            options.add(new ModelOption(t.first, "=", t.second));
-        }
-        return get(modelClass, options.toArray(new ModelOption[0]));
-    }
-
-    /**
-     * Gets the first element matching the query
-     *
-     * @param modelClass The model class
-     * @param column     The column to query
-     * @param operator   The comparison to perform
-     * @param data       The data to check
-     *
-     * @return The first element matching the query or null
-     */
-    @Deprecated
-    public static <T extends Model> T first(Class<T> modelClass, String column, String operator,
-        Object data) {
-        List<T> list = get(modelClass, column, operator, data);
-        if (list.size() < 1) {
-            return null;
-        }
-        return list.get(0);
-    }
-
-    /**
-     * Gets the first element matching the query
-     *
-     * @param modelClass The model class
-     * @param column     The column to query
-     * @param data       The data to check
-     *
-     * @return The first element matching the query or null
-     */
-    @Deprecated
-    public static <T extends Model> T first(Class<T> modelClass, String column, Object data) {
-        return first(modelClass, column, "=", data);
-    }
-
-    /**
-     * Gets the first model in the database
-     *
-     * @param modelClass The model class
-     *
-     * @return The first model
-     */
-    public static <T extends Model> T first(Class<T> modelClass) {
-        return ModelUtils.getQueryBuilderWithScopes(modelClass).first();
-    }
-
-    /**
-     * Gets the first element matching the query
-     *
-     * @param modelClass The model class
-     * @param pairs      The comparisons to do
-     *
-     * @return The first element matching the query or null
-     */
-    @Deprecated
-    public static <T extends Model> T first(Class<T> modelClass, ModelOption... pairs) {
-        List<T> list = get(modelClass, pairs);
-        if (list.size() < 1) {
-            return null;
-        }
-        return list.get(0);
-    }
-
-    /**
-     * Gets the first element matching the query
-     *
-     * @param modelClass The model class
-     * @param tuples     A list of tuples (Column/Value pairs)
-     *
-     * @return The first element matching the query, or null
-     */
-    @Deprecated
-    public static <T extends Model> T first(Class<T> modelClass, Tuple<String, ?>... tuples) {
-        List<ModelOption> options = new ArrayList<>();
-        for (Tuple<String, ?> tuple : tuples) {
-            options.add(new ModelOption(tuple.first, "=", tuple.second));
-        }
-        return first(modelClass, options.toArray(new ModelOption[0]));
     }
 
     /**
