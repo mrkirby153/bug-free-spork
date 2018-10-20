@@ -1,6 +1,7 @@
 package com.mrkirby153.bfs.model;
 
 import com.mrkirby153.bfs.annotations.Column;
+import com.mrkirby153.bfs.annotations.DefaultField;
 import com.mrkirby153.bfs.annotations.PrimaryKey;
 import com.mrkirby153.bfs.annotations.Table;
 import com.mrkirby153.bfs.model.traits.HasTimestamps;
@@ -26,23 +27,15 @@ import java.util.stream.Collectors;
  */
 public class Model implements HasTimestamps {
 
-    private static Field defaultCreatedAtField;
-    private static Field defaultUpdatedAtField;
     private static Grammar defaultGrammar = new MySqlGrammar();
-
-    static {
-        try {
-            // Declare the default timestamp fields so we can exclude them reflectively
-            defaultCreatedAtField = Model.class.getDeclaredField("createdAt");
-            defaultUpdatedAtField = Model.class.getDeclaredField("updatedAt");
-        } catch (NoSuchFieldException ignored) {
-        }
-    }
 
     // Internal timestamp fields
     @Column("created_at")
+    @DefaultField
     public Timestamp createdAt;
+
     @Column("updated_at")
+    @DefaultField
     public Timestamp updatedAt;
     /**
      * If the model should automatically set <code>createdAt</code> and <code>updatedAt</code> fields
@@ -55,6 +48,10 @@ public class Model implements HasTimestamps {
      * The old state of the model
      */
     private transient HashMap<String, Object> oldState = new HashMap<>();
+
+    private transient Map<String, Field> defaultFields = new HashMap<>();
+
+    private transient List<String> removeIfNotDefault = new ArrayList<>();
 
     public Model() {
         discoverColumns();
@@ -227,18 +224,14 @@ public class Model implements HasTimestamps {
      * @return The data
      */
     protected Pair[] getDataForInsert() {
+        if (!timestamps) {
+            removeIfNotDefault.add("created_at");
+            removeIfNotDefault.add("updated_at");
+        }
         return getDataAsPairs().stream().filter(pair -> {
-            // Remove the updated_at and created_at field if they're not dirty and the default
-            if (!timestamps) {
-                if (pair.getColumn().equalsIgnoreCase(getCreatedAt())) {
-                    if (columns.get(getCreatedAt()).equals(defaultCreatedAtField)) {
-                        return isDirty(getCreatedAt());
-                    }
-                }
-                if (pair.getColumn().equalsIgnoreCase(getUpdatedAt())) {
-                    if (columns.get(getUpdatedAt()).equals(defaultUpdatedAtField)) {
-                        return isDirty(getUpdatedAt());
-                    }
+            if(this.removeIfNotDefault.contains(pair.getColumn())) {
+                if(columns.get(pair.getColumn()).equals(this.defaultFields.get(pair.getColumn()))) {
+                    return isDirty(pair.getColumn());
                 }
             }
             return true;
@@ -458,6 +451,9 @@ public class Model implements HasTimestamps {
                 }
                 String columnName = getColumnName(field);
                 this.columns.put(columnName, field);
+                if (field.isAnnotationPresent(DefaultField.class)) {
+                    this.defaultFields.put(columnName, field);
+                }
             }
             c = c.getSuperclass();
         }
