@@ -57,9 +57,12 @@ public class ModelUtils {
     protected static <T extends Model> ModelQueryBuilder<T> getQueryBuilderWithScopes(
         Class<T> clazz) {
         ModelQueryBuilder<T> qb = new ModelQueryBuilder<>(Model.getDefaultGrammar(), clazz);
-        for (Class<? extends Scope> scope : getScopes(clazz)) {
-            qb.addScope(scope);
-            ScopeUtils.getScope(scope).extend(qb);
+        Class<? extends Scope>[] scopes = getScopes(clazz);
+        if(scopes != null) {
+            for (Class<? extends Scope> scope : scopes) {
+                qb.addScope(scope);
+                ScopeUtils.getScope(scope).extend(qb);
+            }
         }
         return qb;
     }
