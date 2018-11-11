@@ -504,7 +504,6 @@ public class QueryBuilder {
         try (Connection con = connectionFactory.getConnection();
             PreparedStatement statement = con.prepareStatement(query)) {
             grammar.bind(this, statement);
-            System.out.println(statement);
 
             if (logQueries) {
                 logger.debug("Executing SELECT: " + statement);
@@ -513,7 +512,6 @@ public class QueryBuilder {
                 return parse(rs);
             }
         } catch (SQLException e) {
-            System.out.println(query);
             e.printStackTrace();
         }
         return new ArrayList<>();
