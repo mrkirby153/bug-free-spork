@@ -6,6 +6,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -111,7 +112,8 @@ public class DB {
      */
     public static Long executeInsert(@Language("MySQL") String query, Object... params) {
         try (Connection con = QueryBuilder.connectionFactory.getConnection()) {
-            PreparedStatement statement = con.prepareStatement(query);
+            PreparedStatement statement = con.prepareStatement(query,
+                Statement.RETURN_GENERATED_KEYS);
             int index = 1;
             for (Object o : params) {
                 statement.setObject(index++, o);
