@@ -116,7 +116,7 @@ public class DB {
             for (Object o : params) {
                 statement.setObject(index++, o);
             }
-            statement.executeLargeUpdate();
+            statement.executeUpdate();
             try (ResultSet rs = statement.getGeneratedKeys()) {
                 if (rs == null)
                     return null;
