@@ -4,6 +4,9 @@ import com.mrkirby153.bfs.annotations.Column;
 import com.mrkirby153.bfs.annotations.DefaultField;
 import com.mrkirby153.bfs.annotations.PrimaryKey;
 import com.mrkirby153.bfs.annotations.Table;
+import com.mrkirby153.bfs.model.relationships.OneToManyRelationship;
+import com.mrkirby153.bfs.model.relationships.OneToOneRelationship;
+import com.mrkirby153.bfs.model.relationships.Relationship;
 import com.mrkirby153.bfs.model.traits.HasTimestamps;
 import com.mrkirby153.bfs.sql.elements.Pair;
 import com.mrkirby153.bfs.sql.grammars.Grammar;
@@ -229,8 +232,9 @@ public class Model implements HasTimestamps {
             removeIfNotDefault.add("updated_at");
         }
         return getDataAsPairs().stream().filter(pair -> {
-            if(this.removeIfNotDefault.contains(pair.getColumn())) {
-                if(columns.get(pair.getColumn()).equals(this.defaultFields.get(pair.getColumn()))) {
+            if (this.removeIfNotDefault.contains(pair.getColumn())) {
+                if (columns.get(pair.getColumn())
+                    .equals(this.defaultFields.get(pair.getColumn()))) {
                     return isDirty(pair.getColumn());
                 }
             }
@@ -291,27 +295,22 @@ public class Model implements HasTimestamps {
      * @param data The data received from the database
      */
     public void setData(HashMap<String, Object> data) {
-        data.forEach((column, d) -> {
-            Field field = this.columns.get(column);
-            if (field == null) {
-                return;
-            }
-            try {
-                field.set(this, d);
-            } catch (IllegalAccessException e) {
-                e.printStackTrace();
-            }
-        });
+        data.forEach(this::setColumnData);
         updateState();
     }
 
     public void setData(String key, Object value) {
-        Field field = this.columns.get(key);
+        setColumnData(key, value);
+    }
+
+
+    private void setColumnData(String column, Object d) {
+        Field field = this.columns.get(column);
         if (field == null) {
             return;
         }
         try {
-            field.set(this, value);
+            field.set(this, d);
         } catch (IllegalAccessException e) {
             e.printStackTrace();
         }
@@ -445,6 +444,9 @@ public class Model implements HasTimestamps {
                 if (!field.isAccessible()) {
                     field.setAccessible(true);
                 }
+                if(Relationship.class.isAssignableFrom(field.getType())) {
+                    continue; // Ignore relationship fields
+                }
                 if (Modifier.isTransient(field.getModifiers()) || Modifier
                     .isFinal(field.getModifiers()) || Modifier.isStatic(field.getModifiers())) {
                     continue;
@@ -513,5 +515,16 @@ public class Model implements HasTimestamps {
         });
         sb.append(properties.toString()).append(")");
         return sb.toString();
+    }
+
+    protected <T extends Model> OneToOneRelationship<T> hasOne(Class<T> otherModelClass,
+        String foreignKey, String localKey) {
+        return new OneToOneRelationship<>(this, otherModelClass, localKey, foreignKey);
+    }
+
+    protected <T extends Model> OneToManyRelationship<T> hasMany(Class<T> otherModelClass,
+        String foreignKey, String localKey) {
+        return new OneToManyRelationship<>(this, otherModelClass, localKey, foreignKey);
+
     }
 }
