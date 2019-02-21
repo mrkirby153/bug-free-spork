@@ -4,6 +4,9 @@ import com.mrkirby153.bfs.model.Model;
 
 import java.util.List;
 
+/**
+ * Represents a one to many relationship
+ */
 public class OneToManyRelationship<T extends Model> extends Relationship<T, List<T>> {
 
     public OneToManyRelationship(Model parent, Class<T> referenced, String parentKey,

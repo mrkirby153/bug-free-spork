@@ -444,7 +444,7 @@ public class Model implements HasTimestamps {
                 if (!field.isAccessible()) {
                     field.setAccessible(true);
                 }
-                if(Relationship.class.isAssignableFrom(field.getType())) {
+                if (Relationship.class.isAssignableFrom(field.getType())) {
                     continue; // Ignore relationship fields
                 }
                 if (Modifier.isTransient(field.getModifiers()) || Modifier
@@ -517,14 +517,57 @@ public class Model implements HasTimestamps {
         return sb.toString();
     }
 
+    /**
+     * Creates a new one to one relationship
+     *
+     * @param otherModelClass The other model
+     * @param foreignKey      The foreign key on the model
+     * @param localKey        The local key on this model
+     *
+     * @return The relationship
+     */
     protected <T extends Model> OneToOneRelationship<T> hasOne(Class<T> otherModelClass,
         String foreignKey, String localKey) {
         return new OneToOneRelationship<>(this, otherModelClass, localKey, foreignKey);
     }
 
+    /**
+     * Creates a new one to one relationship
+     *
+     * @param otherModelClass The other model
+     * @param foreignKey      The foreign key on the model
+     *
+     * @return The relationship
+     */
+    protected <T extends Model> OneToOneRelationship<T> hasOne(Class<T> otherModelClass,
+        String foreignKey) {
+        return new OneToOneRelationship<>(this, otherModelClass, this.getPrimaryKey(), foreignKey);
+    }
+
+    /**
+     * Creates a new onw to many relationship
+     *
+     * @param otherModelClass The other model
+     * @param foreignKey      The foreign key on the model
+     * @param localKey        The local key on this model
+     *
+     * @return The relationship
+     */
     protected <T extends Model> OneToManyRelationship<T> hasMany(Class<T> otherModelClass,
         String foreignKey, String localKey) {
         return new OneToManyRelationship<>(this, otherModelClass, localKey, foreignKey);
+    }
 
+    /**
+     * Creates a new one to many relationship
+     *
+     * @param otherModelClass The other model
+     * @param foreignKey      The foreign key on the model
+     *
+     * @return The relationship
+     */
+    protected <T extends Model> OneToManyRelationship<T> hasMany(Class<T> otherModelClass,
+        String foreignKey) {
+        return new OneToManyRelationship<>(this, otherModelClass, this.getPrimaryKey(), foreignKey);
     }
 }
