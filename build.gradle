@@ -21,8 +21,8 @@ sourceCompatibility = '1.8'
 // In this section you declare the dependencies for your production and test code
 dependencies {
     // The production code uses the SLF4J logging API at compile time
-    compile 'org.slf4j:slf4j-api:1.7.25'
-    compile 'mysql:mysql-connector-java:8.0.18'
+    implementation 'org.slf4j:slf4j-api:1.7.25'
+    runtimeOnly 'mysql:mysql-connector-java:8.0.18'
 
     compileOnly 'org.projectlombok:lombok:1.18.10'
     annotationProcessor 'org.projectlombok:lombok:1.18.10'
