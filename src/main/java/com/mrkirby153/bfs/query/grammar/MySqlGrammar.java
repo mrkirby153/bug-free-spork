@@ -143,6 +143,57 @@ public class MySqlGrammar implements Grammar {
         return String.format("WHERE %s", appendWheres(builder.getWheres()));
     }
 
+    private String compileJoins(QueryBuilder builder) {
+        return builder.getJoins().stream().map(join -> {
+            String joinType = "";
+            switch (join.getType()) {
+                case INNER:
+                    joinType = "INNER";
+                    break;
+                case OUTER:
+                    joinType = "FULL OUTER";
+                    break;
+                case LEFT:
+                    joinType = "LEFT";
+                    break;
+                case RIGHT:
+                    joinType = "RIGHT";
+                    break;
+            }
+            return String.format("%s JOIN %s ON %s %s %s", joinType, wrap(join.getTable()),
+                wrapColumn(join.getFirstColumn()), join.getOperation(),
+                wrapColumn(join.getSecondColumn()));
+        }).collect(Collectors.joining(" "));
+    }
+
+    private String compileLimit(QueryBuilder builder) {
+        return builder.getLimit() != null ? String.format("LIMIT %d", builder.getLimit()) : "";
+    }
+
+    private String compileOffset(QueryBuilder builder) {
+        return builder.getOffset() != null ? String.format("OFFSET %d", builder.getOffset()) : "";
+    }
+
+    private String compileOrders(QueryBuilder builder) {
+        if (builder.getOrders().size() > 0) {
+
+            return String.format("ORDER BY %s", builder.getOrders().stream().map(order -> {
+                String direction = "";
+                switch (order.getDirection()) {
+                    case ASC:
+                        direction = "ASC";
+                        break;
+                    case DESC:
+                        direction = "DESC";
+                        break;
+                }
+                return String.format("%s %s", wrapColumn(order.getColumn()), direction);
+            }).collect(Collectors.joining(", ")));
+        } else {
+            return "";
+        }
+    }
+
 
     private String appendWheres(List<WhereElement> wheres) {
         StringBuilder sb = new StringBuilder();
@@ -182,7 +233,7 @@ public class MySqlGrammar implements Grammar {
 
     private String whereBasic(WhereElement e) {
         return String
-            .format("%s %s %s", wrapColumn(e.getColumn()), e.get("operator"), e.get("value"));
+            .format("%s %s %s", wrapColumn(e.getColumn()), e.get("operator"), parameter(e.get("value")));
     }
 
     private String whereNull(WhereElement e, boolean not) {

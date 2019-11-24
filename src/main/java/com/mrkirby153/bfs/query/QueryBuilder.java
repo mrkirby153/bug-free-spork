@@ -8,6 +8,7 @@ import com.mrkirby153.bfs.query.elements.OrderElement.Direction;
 import com.mrkirby153.bfs.query.elements.WhereElement;
 import com.mrkirby153.bfs.query.elements.WhereElement.Type;
 import com.mrkirby153.bfs.query.grammar.Grammar;
+import com.mrkirby153.bfs.query.grammar.MySqlGrammar;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
@@ -35,6 +36,8 @@ import java.util.stream.Collectors;
 @Getter
 @RequiredArgsConstructor
 public class QueryBuilder {
+
+    public static final Grammar MYSQL_GRAMMAR = new MySqlGrammar();
 
     private static final String[] operators = new String[]{
         "=", "<", ">", "<=", ">=", "<>", "!=", "<=>", "like", "like binary", "not like", "ilike",
@@ -117,6 +120,10 @@ public class QueryBuilder {
     public QueryBuilder from(String table) {
         this.table = table;
         return this;
+    }
+
+    public QueryBuilder table(String table) {
+        return from(table);
     }
 
     /**
@@ -348,7 +355,7 @@ public class QueryBuilder {
         return this;
     }
 
-    public int update(Pair<String, Object>... data) {
+    public final int update(Pair<String, Object>... data) {
         List<Object> bindings = this.bindings.computeIfAbsent("update", a -> new ArrayList<>());
         bindings.addAll(Arrays.stream(data).map(Pair::getSecond).collect(Collectors.toList()));
         String query = this.grammar.compileUpdate(this,
@@ -364,7 +371,7 @@ public class QueryBuilder {
         return -1;
     }
 
-    public List<DbRow> query() {
+    public final List<DbRow> query() {
         String query = this.grammar.compileSelect(this);
         try (Connection c = connectionFactory.getConnection();
             PreparedStatement ps = c.prepareStatement(query)) {
@@ -379,7 +386,7 @@ public class QueryBuilder {
         return Collections.emptyList();
     }
 
-    public boolean delete() {
+    public final boolean delete() {
         String query = this.grammar.compileDelete(this);
         try (Connection c = connectionFactory.getConnection(); PreparedStatement ps = c
             .prepareStatement(query)) {
@@ -392,7 +399,8 @@ public class QueryBuilder {
         return false;
     }
 
-    public void insert(Pair<String, Object>... data) {
+    @SafeVarargs
+    public final void insert(Pair<String, Object>... data) {
         Arrays.stream(data).map(Pair::getSecond).forEach(d -> addBinding("insert", d));
         String query = this.grammar
             .compileInsert(this, Arrays.stream(data).map(Pair::getFirst).toArray(String[]::new));
@@ -406,7 +414,7 @@ public class QueryBuilder {
         }
     }
 
-    public long insertWithGenerated(Pair<String, Object>... data) {
+    public final long insertWithGenerated(Pair<String, Object>... data) {
         Arrays.stream(data).map(Pair::getSecond).forEach(d -> addBinding("insert", d));
         String query = this.grammar
             .compileInsert(this, Arrays.stream(data).map(Pair::getFirst).toArray(String[]::new));
@@ -428,11 +436,11 @@ public class QueryBuilder {
         return -1;
     }
 
-    public int insertBulk(List<Map<String, Object>> data) {
+    public final int insertBulk(List<Map<String, Object>> data) {
         return insertBulk(data, false).size();
     }
 
-    public List<Long> insertBulkWithGenerated(List<Map<String, Object>> data) {
+    public final List<Long> insertBulkWithGenerated(List<Map<String, Object>> data) {
         return insertBulk(data, true);
     }
 

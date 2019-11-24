@@ -21,12 +21,6 @@ public class BasicMySQLConnectionFactory implements ConnectionFactory {
     @Override
     public Connection getConnection() {
         try {
-            Class.forName("com.mysql.jdbc.Driver");
-        } catch (ClassNotFoundException ex) {
-            throw new IllegalStateException("Could not find the MySQL driver on the classpath!");
-        }
-
-        try {
             return DriverManager.getConnection(getConnectionUrl(), this.username, this.password);
         } catch (SQLException e) {
             throw new IllegalStateException("Could not create a connection to the database", e);
