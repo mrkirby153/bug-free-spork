@@ -1,25 +1,39 @@
 package com.mrkirby153.bfs.query;
 
 import com.mrkirby153.bfs.Pair;
+import com.mrkirby153.bfs.connection.ConnectionFactory;
 import com.mrkirby153.bfs.query.elements.JoinElement;
 import com.mrkirby153.bfs.query.elements.OrderElement;
 import com.mrkirby153.bfs.query.elements.OrderElement.Direction;
 import com.mrkirby153.bfs.query.elements.WhereElement;
 import com.mrkirby153.bfs.query.elements.WhereElement.Type;
+import com.mrkirby153.bfs.query.grammar.Grammar;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.stream.Collectors;
 
 /**
  * A query builder providing a declarative java-like interface for SQL queries
  */
 @Slf4j
 @Getter
+@RequiredArgsConstructor
 public class QueryBuilder {
 
     private static final String[] operators = new String[]{
@@ -27,6 +41,13 @@ public class QueryBuilder {
         "&", "|", "^", "<<", ">>", "rlike", "regexp", "not regexp", "~", "~*", "!~*", "similar to",
         "not similar to", "not ilike", "~~*", "!~~*"
     };
+
+    public static ConnectionFactory defaultConnectionFactory;
+
+    private final Grammar grammar;
+
+    @Setter
+    private ConnectionFactory connectionFactory = defaultConnectionFactory;
 
     /**
      * The table to execute the query on
@@ -328,36 +349,138 @@ public class QueryBuilder {
     }
 
     public int update(Pair<String, Object>... data) {
-        // TODO: 11/23/19 Implement
-        return 0;
+        List<Object> bindings = this.bindings.computeIfAbsent("update", a -> new ArrayList<>());
+        bindings.addAll(Arrays.stream(data).map(Pair::getSecond).collect(Collectors.toList()));
+        String query = this.grammar.compileUpdate(this,
+            Arrays.stream(data).map(Pair::getFirst).toArray(String[]::new));
+        try (Connection c = connectionFactory.getConnection();
+            PreparedStatement ps = c.prepareStatement(query)) {
+            grammar.bind(this, ps);
+            log.trace("Executing UPDATE: {}", ps);
+            return ps.executeUpdate();
+        } catch (SQLException e) {
+            log.error("Error when updating", e);
+        }
+        return -1;
     }
 
     public List<DbRow> query() {
-        // TODO: 11/23/19 Implement
-        return null;
+        String query = this.grammar.compileSelect(this);
+        try (Connection c = connectionFactory.getConnection();
+            PreparedStatement ps = c.prepareStatement(query)) {
+            grammar.bind(this, ps);
+            log.trace("Executing SELECT: {}", ps);
+            try (ResultSet rs = ps.executeQuery()) {
+                return parse(rs);
+            }
+        } catch (SQLException e) {
+            log.error("Error when selecting", e);
+        }
+        return Collections.emptyList();
     }
 
     public boolean delete() {
-        // TODO: 11/23/19 Implement
+        String query = this.grammar.compileDelete(this);
+        try (Connection c = connectionFactory.getConnection(); PreparedStatement ps = c
+            .prepareStatement(query)) {
+            grammar.bind(this, ps);
+            log.trace("Executing DELETE: {}", ps);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            log.error("Error when deleting", e);
+        }
         return false;
     }
 
     public void insert(Pair<String, Object>... data) {
-        // TODO: 11/23/19 Implement
+        Arrays.stream(data).map(Pair::getSecond).forEach(d -> addBinding("insert", d));
+        String query = this.grammar
+            .compileInsert(this, Arrays.stream(data).map(Pair::getFirst).toArray(String[]::new));
+        try (Connection con = connectionFactory.getConnection();
+            PreparedStatement ps = con.prepareStatement(query)) {
+            this.grammar.bind(this, ps);
+            log.trace("Executing INSERT: {}", ps);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     public long insertWithGenerated(Pair<String, Object>... data) {
-        // TODO: 11/23/19 Implement
+        Arrays.stream(data).map(Pair::getSecond).forEach(d -> addBinding("insert", d));
+        String query = this.grammar
+            .compileInsert(this, Arrays.stream(data).map(Pair::getFirst).toArray(String[]::new));
+        try (Connection con = connectionFactory.getConnection();
+            PreparedStatement ps = con.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
+            this.grammar.bind(this, ps);
+            log.trace("Executing INSERT (with generated): " + ps);
+            ps.executeUpdate();
+            try (ResultSet rs = ps.getGeneratedKeys()) {
+                if (rs.next()) {
+                    long generated = rs.getLong(1);
+                    log.trace("Returned generated value {}", generated);
+                    return generated;
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
         return -1;
     }
 
     public int insertBulk(List<Map<String, Object>> data) {
-        // TODO: 11/23/19 Implement
-        return -1;
+        return insertBulk(data, false).size();
     }
 
     public List<Long> insertBulkWithGenerated(List<Map<String, Object>> data) {
-        // TODO: 11/23/19 Implement
-        return null;
+        return insertBulk(data, true);
+    }
+
+    private List<Long> insertBulk(List<Map<String, Object>> data, boolean generated) {
+        if (data.size() == 0) {
+            throw new IllegalArgumentException("Can't insert nothing");
+        }
+        int colCount = data.get(0).size();
+        for (Map<String, Object> d : data) {
+            if (d.size() != colCount) {
+                throw new IllegalArgumentException(
+                    "Inconsistent column count. Expected " + colCount + " got " + d.size());
+            }
+        }
+        data.stream().flatMap(a -> a.entrySet().stream()).map(Entry::getValue)
+            .forEach(d -> addBinding("insert", d));
+        String query = this.grammar.compileInsertMany(this, data.size(),
+            data.get(0).keySet().toArray(new String[0]));
+        try (Connection con = connectionFactory.getConnection();
+            PreparedStatement ps = con.prepareStatement(query,
+                generated ? Statement.RETURN_GENERATED_KEYS : Statement.NO_GENERATED_KEYS)) {
+            this.grammar.bind(this, ps);
+            log.trace("Executing BULK INSERT (With generated? {}): {}", generated, ps);
+            List<Long> gen = new ArrayList<>();
+            ps.executeUpdate();
+            try (ResultSet rs = ps.getGeneratedKeys()) {
+                while (rs.next()) {
+                    gen.add(rs.getLong(1));
+                }
+                return gen;
+            }
+        } catch (SQLException e) {
+            log.error("Error when inserting bulk", e);
+        }
+        return Collections.emptyList();
+    }
+
+    private List<DbRow> parse(ResultSet rs) throws SQLException {
+        ArrayList<DbRow> data = new ArrayList<>();
+        ResultSetMetaData md = rs.getMetaData();
+        while (rs.next()) {
+            DbRow row = new DbRow();
+            for (int i = 1; i <= md.getColumnCount(); i++) {
+                String col = md.getColumnLabel(i);
+                row.put(col, rs.getObject(col));
+            }
+            data.add(row);
+        }
+        return data;
     }
 }

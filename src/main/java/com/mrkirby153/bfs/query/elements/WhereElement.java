@@ -33,6 +33,10 @@ public class WhereElement {
         }
     }
 
+    public Object get(String key) {
+        return data.get(key);
+    }
+
     public enum Type {
         BASIC,
         NOT_NULL,
