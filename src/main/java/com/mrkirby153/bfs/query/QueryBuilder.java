@@ -27,6 +27,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 /**
@@ -44,6 +48,9 @@ public class QueryBuilder {
         "&", "|", "^", "<<", ">>", "rlike", "regexp", "not regexp", "~", "~*", "!~*", "similar to",
         "not similar to", "not ilike", "~~*", "!~~*"
     };
+
+    // Give 5 threads for running queries
+    private static ExecutorService threadPool = Executors.newFixedThreadPool(5, new QueryThreadPoolFactory());
 
     public static ConnectionFactory defaultConnectionFactory;
 
@@ -356,34 +363,61 @@ public class QueryBuilder {
     }
 
     public final int update(Pair<String, Object>... data) {
-        List<Object> bindings = this.bindings.computeIfAbsent("update", a -> new ArrayList<>());
-        bindings.addAll(Arrays.stream(data).map(Pair::getSecond).collect(Collectors.toList()));
-        String query = this.grammar.compileUpdate(this,
-            Arrays.stream(data).map(Pair::getFirst).toArray(String[]::new));
-        try (Connection c = connectionFactory.getConnection();
-            PreparedStatement ps = c.prepareStatement(query)) {
-            grammar.bind(this, ps);
-            log.trace("Executing UPDATE: {}", ps);
-            return ps.executeUpdate();
-        } catch (SQLException e) {
-            log.error("Error when updating", e);
+        try {
+            return updateAsync(data).get();
+        } catch (InterruptedException e) {
+            // Ignore
+        } catch (ExecutionException e) {
+            log.error("Could not execute update", e);
         }
         return -1;
     }
 
     public final List<DbRow> query() {
-        String query = this.grammar.compileSelect(this);
-        try (Connection c = connectionFactory.getConnection();
-            PreparedStatement ps = c.prepareStatement(query)) {
-            grammar.bind(this, ps);
-            log.trace("Executing SELECT: {}", ps);
-            try (ResultSet rs = ps.executeQuery()) {
-                return parse(rs);
-            }
-        } catch (SQLException e) {
-            log.error("Error when selecting", e);
+        try{
+            return queryAsync().get();
+        } catch (InterruptedException e){
+            // Ignore
+        } catch (ExecutionException e){
+            log.error("Could not execute query", e);
         }
         return Collections.emptyList();
+    }
+
+    public final CompletableFuture<List<DbRow>> queryAsync() {
+        CompletableFuture<List<DbRow>> cf = new CompletableFuture<>();
+        threadPool.submit(() -> {
+            String query = this.grammar.compileSelect(this);
+            try (Connection c = connectionFactory.getConnection(); PreparedStatement ps = c.prepareStatement(query)) {
+                grammar.bind(this, ps);
+                log.trace("Executing SELECT: {}", ps);
+                try(ResultSet rs = ps.executeQuery()) {
+                    cf.complete(parse(rs));
+                }
+            } catch (SQLException e){
+                cf.completeExceptionally(e);
+            }
+        });
+        return cf;
+    }
+
+    public final CompletableFuture<Integer> updateAsync(Pair<String, Object>... data) {
+        CompletableFuture<Integer> cf = new CompletableFuture<>();
+        threadPool.submit(() -> {
+            List<Object> bindings = this.bindings.computeIfAbsent("update", a -> new ArrayList<>());
+            bindings.addAll(Arrays.stream(data).map(Pair::getSecond).collect(Collectors.toList()));
+            String query = this.grammar.compileUpdate(this,
+                Arrays.stream(data).map(Pair::getFirst).toArray(String[]::new));
+            try (Connection c = connectionFactory.getConnection();
+                PreparedStatement ps = c.prepareStatement(query)) {
+                grammar.bind(this, ps);
+                log.trace("Executing UPDATE: {}", ps);
+                 cf.complete(ps.executeUpdate());
+            } catch (SQLException e) {
+                cf.completeExceptionally(e);
+            }
+        });
+        return cf;
     }
 
     public final boolean delete() {
