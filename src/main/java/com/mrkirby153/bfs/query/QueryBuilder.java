@@ -434,7 +434,7 @@ public class QueryBuilder {
     }
 
     public  boolean delete() {
-        if (!QueryEventManager.callEvents(QueryEvent.Type.PRE_DELETE, this)) {
+        if (QueryEventManager.callEvents(QueryEvent.Type.PRE_DELETE, this)) {
             return true;
         }
         String query = this.grammar.compileDelete(this);
@@ -453,7 +453,7 @@ public class QueryBuilder {
 
     @SafeVarargs
     public final void insert(Pair<String, Object>... data) {
-        if (!QueryEventManager.callEvents(QueryEvent.Type.PRE_CREATE, this)) {
+        if (QueryEventManager.callEvents(QueryEvent.Type.PRE_CREATE, this)) {
             return;
         }
         Arrays.stream(data).map(Pair::getSecond).forEach(d -> addBinding("insert", d));
@@ -471,7 +471,7 @@ public class QueryBuilder {
     }
 
     public final long insertWithGenerated(Pair<String, Object>... data) {
-        if (!QueryEventManager.callEvents(QueryEvent.Type.PRE_CREATE, this)) {
+        if (QueryEventManager.callEvents(QueryEvent.Type.PRE_CREATE, this)) {
             return 0;
         }
         Arrays.stream(data).map(Pair::getSecond).forEach(d -> addBinding("insert", d));
@@ -523,7 +523,7 @@ public class QueryBuilder {
                     "Inconsistent column count. Expected " + colCount + " got " + d.size());
             }
         }
-        if (!QueryEventManager.callEvents(QueryEvent.Type.PRE_CREATE, this)) {
+        if (QueryEventManager.callEvents(QueryEvent.Type.PRE_CREATE, this)) {
             return Collections.emptyList();
         }
         data.stream().flatMap(a -> a.entrySet().stream()).map(Entry::getValue)
