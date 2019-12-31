@@ -40,6 +40,12 @@ public class SoftDeletingModel extends Model {
                 Collectors.toList());
     }
 
+    public static <T extends SoftDeletingModel> ModelQueryBuilder<T> withTrashed(Class<T> clazz) {
+        ModelQueryBuilder<T> mqb = new ModelQueryBuilder<>(clazz);
+        mqb.withoutEnhancer(Constants.ENHANCER_SOFT_DELETE);
+        return mqb;
+    }
+
     private void scanForDeletedAt() {
         deletedAtCols.clear();
         for (Field f : getClass().getDeclaredFields()) {
@@ -60,6 +66,7 @@ public class SoftDeletingModel extends Model {
     public void touchDeletedAt() {
         Timestamp now = new Timestamp(System.currentTimeMillis());
         deletedAtCols.stream().filter(col -> !this.isColumnDirty(col)).forEach(col -> {
+            log.debug("Touching soft delete field {}", col);
             setColumn(col, now);
         });
     }
