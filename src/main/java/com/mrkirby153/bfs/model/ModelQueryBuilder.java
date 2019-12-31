@@ -1,20 +1,30 @@
 package com.mrkirby153.bfs.model;
 
+import com.mrkirby153.bfs.model.enhancers.EnhancerUtils;
 import com.mrkirby153.bfs.query.DbRow;
 import com.mrkirby153.bfs.query.QueryBuilder;
 import com.mrkirby153.bfs.query.elements.JoinElement.Type;
 import com.mrkirby153.bfs.query.elements.OrderElement.Direction;
 import com.mrkirby153.bfs.query.grammar.Grammar;
+import jdk.internal.joptsimple.internal.Strings;
 import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
 
     private Class<T> modelClass;
+
+    private List<String> enhancersToSkip = new ArrayList<>();
+
+    public ModelQueryBuilder(Class<T> clazz) {
+        this(QueryBuilder.MYSQL_GRAMMAR, clazz);
+    }
 
     public ModelQueryBuilder(Grammar grammar, Class<T> clazz) {
         super(grammar);
@@ -50,6 +60,21 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
             log.error("Could not instantiate class {}", modelClass, e);
         }
         return null;
+    }
+
+    private void enhance() {
+        List<Enhancer> enhancers = EnhancerUtils
+            .withoutEnhancers(modelClass, enhancersToSkip.toArray(new String[0]));
+        log.trace("Enhancing query builder for {} with {} enhancers: ({})", modelClass,
+            enhancers.size(),
+            Strings.join(enhancers.stream().map(Enhancer::name).collect(Collectors.toList()), ","));
+        log.trace("{} enhancers have been excluded ({})", enhancersToSkip.size(),
+            Strings.join(enhancersToSkip, ","));
+        enhancers.forEach(enhancer -> enhancer.enhance(this));
+    }
+
+    public void withoutEnhancer(String name) {
+        this.enhancersToSkip.add(name);
     }
 
     @Override
@@ -241,5 +266,11 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
     public ModelQueryBuilder<T> offset(long amount) {
         super.offset(amount);
         return this;
+    }
+
+    @Override
+    public CompletableFuture<List<DbRow>> queryAsync() {
+        enhance();
+        return super.queryAsync();
     }
 }

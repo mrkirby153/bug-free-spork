@@ -3,14 +3,14 @@ package com.mrkirby153.bfs.model;
 /**
  * An enhancer for model queries
  */
-public interface Enhancer<T extends Model> {
+public interface Enhancer {
 
     /**
      * Called when a query builder is constructed
      *
      * @param builder The builder
      */
-    default void enhance(ModelQueryBuilder<T> builder) {
+    default void enhance(ModelQueryBuilder<? extends Model> builder) {
 
     }
 
@@ -19,7 +19,7 @@ public interface Enhancer<T extends Model> {
      *
      * @param builder The builder
      */
-    default void onQuery(ModelQueryBuilder<T> builder) {
+    default void onQuery(ModelQueryBuilder<? extends Model> builder) {
 
     }
 
@@ -29,7 +29,7 @@ public interface Enhancer<T extends Model> {
      * @param model   The model that will be inserted
      * @param builder The query builder that will be used
      */
-    default void onInsert(T model, ModelQueryBuilder<T> builder) {
+    default void onInsert(Model model, ModelQueryBuilder<? extends Model> builder) {
 
     }
 
@@ -39,7 +39,7 @@ public interface Enhancer<T extends Model> {
      * @param model   The model that will be updated
      * @param builder The query builder that will be used
      */
-    default void onUpdate(T model, ModelQueryBuilder<T> builder) {
+    default void onUpdate(Model model, ModelQueryBuilder<? extends Model> builder) {
 
     }
 
@@ -49,7 +49,7 @@ public interface Enhancer<T extends Model> {
      * @param model   The model that will be deleted
      * @param builder The builder that will be used
      */
-    default void onDelete(T model, ModelQueryBuilder<T> builder) {
+    default void onDelete(Model model, ModelQueryBuilder<? extends Model> builder) {
 
     }
 

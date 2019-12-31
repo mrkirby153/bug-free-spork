@@ -104,6 +104,10 @@ public class QueryBuilder {
      */
     private boolean distinct = false;
 
+    public QueryBuilder() {
+        this.grammar = MYSQL_GRAMMAR;
+    }
+
     /**
      * Selects the columns to return
      *
@@ -384,7 +388,7 @@ public class QueryBuilder {
         return Collections.emptyList();
     }
 
-    public final CompletableFuture<List<DbRow>> queryAsync() {
+    public CompletableFuture<List<DbRow>> queryAsync() {
         CompletableFuture<List<DbRow>> cf = new CompletableFuture<>();
         threadPool.submit(() -> {
             String query = this.grammar.compileSelect(this);
