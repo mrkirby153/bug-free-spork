@@ -3,16 +3,15 @@ package com.mrkirby153.bfs.model.enhancers;
 import com.mrkirby153.bfs.model.Enhancer;
 import com.mrkirby153.bfs.model.Model;
 import com.mrkirby153.bfs.model.annotations.Enhancers;
+import com.mrkirby153.bfs.model.annotations.Timestamps;
 import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Slf4j
 public class EnhancerUtils {
@@ -33,18 +32,19 @@ public class EnhancerUtils {
     public static List<Enhancer> getEnhancers(Class<? extends Model> model) {
         List<Class<? extends Enhancer>> modelEnhancers = modelEnhancerCache.get(model);
         if (modelEnhancers == null) {
+            modelEnhancers = new ArrayList<>();
             Enhancers annotation = model.getAnnotation(Enhancers.class);
-            if (annotation != null) {
-                modelEnhancers = Arrays.stream(annotation.value()).map(
-                    com.mrkirby153.bfs.model.annotations.Enhancer::value).collect(Collectors.toList());
+            if (annotation != null) {Arrays.stream(annotation.value()).map(
+                    com.mrkirby153.bfs.model.annotations.Enhancer::value).forEach(modelEnhancers::add);
             } else {
                 com.mrkirby153.bfs.model.annotations.Enhancer enhancerAnnotation = model.getAnnotation(
                     com.mrkirby153.bfs.model.annotations.Enhancer.class);
                 if(enhancerAnnotation != null) {
-                    modelEnhancers = Collections.singletonList(enhancerAnnotation.value());
-                } else {
-                    modelEnhancers = new ArrayList<>();
+                    modelEnhancers.add(enhancerAnnotation.value());
                 }
+            }
+            if(model.isAnnotationPresent(Timestamps.class)) {
+                modelEnhancers.add(TimestampEnhancer.class);
             }
             log.trace("Caching enhancers for {}", model);
             modelEnhancerCache.put(model, modelEnhancers);
