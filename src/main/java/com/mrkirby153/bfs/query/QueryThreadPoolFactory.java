@@ -11,6 +11,8 @@ class QueryThreadPoolFactory implements ThreadFactory {
 
     @Override
     public Thread newThread(Runnable r) {
-        return new Thread(r, String.format("bfs-query-%d", threadNumber++));
+        Thread thread = new Thread(r, String.format("bfs-query-%d", threadNumber++));
+        thread.setDaemon(true);
+        return thread;
     }
 }
