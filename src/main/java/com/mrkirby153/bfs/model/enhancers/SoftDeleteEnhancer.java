@@ -14,9 +14,21 @@ import com.mrkirby153.bfs.query.event.QueryEventListener;
  */
 public class SoftDeleteEnhancer implements Enhancer {
 
+    private static final SoftDeleteQueryListener sdql = new SoftDeleteQueryListener();
+
     @Override
     public void enhance(ModelQueryBuilder<? extends Model> builder) {
-        builder.registerListener(Type.PRE_DELETE, new SoftDeleteQueryListener());
+        builder.registerListener(Type.PRE_DELETE, sdql);
+    }
+
+    @Override
+    public void onQuery(ModelQueryBuilder<? extends Model> builder) {
+        SoftDeletingModel.getDeletedAtCols(builder.getModelClass()).forEach(builder::whereNull);
+    }
+
+    @Override
+    public void onUpdate(Model model, ModelQueryBuilder<? extends Model> builder) {
+        SoftDeletingModel.getDeletedAtCols(builder.getModelClass()).forEach(builder::whereNull);
     }
 
     @Override
@@ -24,16 +36,18 @@ public class SoftDeleteEnhancer implements Enhancer {
         return Constants.ENHANCER_SOFT_DELETE;
     }
 
-    public class SoftDeleteQueryListener implements QueryEventListener {
+    private static class SoftDeleteQueryListener implements QueryEventListener {
 
         @Override
         public void onEvent(QueryEvent event) {
-            ModelQueryBuilder mqb = (ModelQueryBuilder) event.getQueryBuilder();
-            SoftDeletingModel m = (SoftDeletingModel) mqb.getModel();
-            m.touchDeletedAt();
-            mqb.setModel(m);
-            mqb.save();
-            event.setCanceled(true);
+            ModelQueryBuilder<? extends Model> mqb = (ModelQueryBuilder<? extends Model>) event
+                .getQueryBuilder();
+            if (mqb.getModel() instanceof SoftDeletingModel) {
+                SoftDeletingModel m = (SoftDeletingModel) mqb.getModel();
+                m.touchDeletedAt();
+                mqb.save();
+                event.setCanceled(true);
+            }
         }
     }
 }

@@ -22,6 +22,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
 
+    @Getter
     private Class<T> modelClass;
 
     @Setter

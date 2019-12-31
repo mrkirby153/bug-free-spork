@@ -33,7 +33,7 @@ public class SoftDeletingModel extends Model {
      *
      * @return The columns that should be deleted at
      */
-    public static List<String> getDeletedAtCols(Class<? extends SoftDeletingModel> clazz) {
+    public static List<String> getDeletedAtCols(Class<? extends Model> clazz) {
         return Arrays.stream(clazz.getDeclaredFields()).peek(f -> f.setAccessible(true))
             .filter(f -> f.isAnnotationPresent(SoftDeleteField.class))
             .map(ModelUtils::getColumnName).collect(
