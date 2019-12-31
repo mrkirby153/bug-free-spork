@@ -14,7 +14,9 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -28,7 +30,7 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
     @Getter
     private T model;
 
-    private List<String> enhancersToSkip = new ArrayList<>();
+    private Set<String> enhancersToSkip = new HashSet<>();
 
     private boolean enhanced = false;
 

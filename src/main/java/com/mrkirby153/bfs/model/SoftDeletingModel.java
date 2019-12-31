@@ -52,10 +52,8 @@ public class SoftDeletingModel extends Model {
      *
      * @return The query builder
      */
-    public static <T extends SoftDeletingModel> ModelQueryBuilder<T> withTrashed(Class<T> clazz) {
-        ModelQueryBuilder<T> mqb = new ModelQueryBuilder<>(clazz);
-        mqb.withoutEnhancer(Constants.ENHANCER_SOFT_DELETE);
-        return mqb;
+    public static <T extends SoftDeletingModel> SoftDeletingModelQueryBuilder<T> withTrashed(Class<T> clazz) {
+        return new SoftDeletingModelQueryBuilder<>(clazz);
     }
 
     private void scanForDeletedAt() {
