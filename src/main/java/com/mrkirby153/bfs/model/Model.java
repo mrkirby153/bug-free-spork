@@ -324,4 +324,15 @@ public class Model {
         }
         queryBuilder.create();
     }
+
+    @Override
+    public String toString() {
+        return this.getClass().getSimpleName()
+            + "[" + this.getTable() + "]"
+            + "{"
+            + this.getColumnData().entrySet().stream()
+            .map(entry -> String.format("%s=%s", entry.getKey(), entry.getValue())).collect(
+                Collectors.joining(", "))
+            + "}";
+    }
 }
