@@ -4,6 +4,7 @@ import com.mrkirby153.bfs.model.annotations.Column;
 import com.mrkirby153.bfs.model.annotations.InheritFields;
 import com.mrkirby153.bfs.model.annotations.PrimaryKey;
 import com.mrkirby153.bfs.model.annotations.Table;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.Field;
@@ -30,6 +31,7 @@ public class Model {
     /**
      * If the model exists
      */
+    @Setter
     private transient boolean exists = false; // All newly created models do not exist
 
     private transient ModelQueryBuilder<Model> queryBuilder = new ModelQueryBuilder<>(
@@ -38,7 +40,6 @@ public class Model {
 
     public Model() {
         discoverColumns();
-        queryBuilder.setModel(this);
     }
 
 
@@ -302,7 +303,7 @@ public class Model {
      * Saves the model
      */
     public void save() {
-        queryBuilder.save();
+        getQueryBuilder().save();
     }
 
     /**
@@ -312,7 +313,7 @@ public class Model {
         if (!exists) {
             throw new IllegalStateException("Cannot update a model that does not exist");
         }
-        queryBuilder.update();
+        getQueryBuilder().update();
     }
 
     /**
@@ -322,7 +323,17 @@ public class Model {
         if (exists) {
             throw new IllegalStateException("Cannot create a model that already exists");
         }
-        queryBuilder.create();
+        getQueryBuilder().create();
+    }
+
+    /**
+     * Deletes the model
+     */
+    public void delete() {
+        if(!exists) {
+            throw new IllegalStateException("Cannot delete a model that does not exist");
+        }
+        getQueryBuilder().delete();
     }
 
     @Override
@@ -334,5 +345,12 @@ public class Model {
             .map(entry -> String.format("%s=%s", entry.getKey(), entry.getValue())).collect(
                 Collectors.joining(", "))
             + "}";
+    }
+
+    protected ModelQueryBuilder<Model> getQueryBuilder() {
+        ModelQueryBuilder<Model> mqb = new ModelQueryBuilder<>(
+            (Class<Model>) this.getClass());
+        mqb.setModel(this);
+        return mqb;
     }
 }

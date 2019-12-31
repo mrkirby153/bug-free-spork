@@ -30,6 +30,8 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
 
     private List<String> enhancersToSkip = new ArrayList<>();
 
+    private boolean enhanced = false;
+
     public ModelQueryBuilder(Class<T> clazz) {
         this(QueryBuilder.MYSQL_GRAMMAR, clazz);
     }
@@ -71,6 +73,9 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
     }
 
     private void enhance() {
+        if(enhanced) {
+            return;
+        }
         List<Enhancer> enhancers = EnhancerUtils
             .withoutEnhancers(modelClass, enhancersToSkip.toArray(new String[0]));
         log.trace("Enhancing query builder for {} with {} enhancers: ({})", modelClass,
@@ -79,6 +84,7 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
         log.trace("{} enhancers have been excluded ({})", enhancersToSkip.size(),
             String.join(",", enhancersToSkip));
         enhancers.forEach(enhancer -> enhancer.enhance(this));
+        enhanced = true;
     }
 
     public void withoutEnhancer(String name) {
@@ -279,21 +285,26 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
     @Override
     public CompletableFuture<List<DbRow>> queryAsync() {
         enhance();
+        EnhancerUtils.withoutEnhancers(modelClass, enhancersToSkip.toArray(new String[0])).forEach(enhancer -> enhancer.onQuery(this));
         return super.queryAsync();
     }
 
     @Override
     public boolean delete() {
-        EnhancerUtils.getEnhancers(modelClass).forEach(enhancer -> enhancer.onDelete(model, this));
-        String primaryKey = model.getPrimaryKey();
-        Object data = model.getData(primaryKey);
-        log.trace("Deleting model with primary key {} = {}", primaryKey, data);
-        where(primaryKey, data);
+        enhance();
+        EnhancerUtils.withoutEnhancers(modelClass, enhancersToSkip.toArray(new String[0])).forEach(enhancer -> enhancer.onDelete(model, this));
+        if(model != null) {
+            String primaryKey = model.getPrimaryKey();
+            Object data = model.getData(primaryKey);
+            log.trace("Deleting model with primary key {} = {}", primaryKey, data);
+            where(primaryKey, data);
+        }
         return super.delete();
     }
 
     public void create() {
-        EnhancerUtils.getEnhancers(modelClass).forEach(enhancer -> enhancer.onInsert(model, this));
+        enhance();
+        EnhancerUtils.withoutEnhancers(modelClass, enhancersToSkip.toArray(new String[0])).forEach(enhancer -> enhancer.onInsert(model, this));
         log.trace("Creating model");
         if (model == null) {
             throw new IllegalArgumentException("Cannot delete model that does not exist");
@@ -304,13 +315,15 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
             long result = insertWithGenerated(data.toArray(new Pair[0]));
             log.trace("Setting auto generated result {}", result);
             model.setColumn(model.getPrimaryKey(), result);
+            model.setExists(true);
         } else {
             insert(data.toArray(new Pair[0]));
         }
     }
 
     public void update() {
-        EnhancerUtils.getEnhancers(modelClass).forEach(enhancer -> enhancer.onUpdate(model, this));
+        enhance();
+        EnhancerUtils.withoutEnhancers(modelClass, enhancersToSkip.toArray(new String[0])).forEach(enhancer -> enhancer.onUpdate(model, this));
         if (model == null) {
             throw new IllegalArgumentException("Cannot update model that does not exist");
         }
