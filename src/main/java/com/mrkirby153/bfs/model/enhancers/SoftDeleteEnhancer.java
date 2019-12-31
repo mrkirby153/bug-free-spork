@@ -27,11 +27,6 @@ public class SoftDeleteEnhancer implements Enhancer {
     }
 
     @Override
-    public void onUpdate(Model model, ModelQueryBuilder<? extends Model> builder) {
-        SoftDeletingModel.getDeletedAtCols(builder.getModelClass()).forEach(builder::whereNull);
-    }
-
-    @Override
     public String name() {
         return Constants.ENHANCER_SOFT_DELETE;
     }
@@ -49,7 +44,6 @@ public class SoftDeleteEnhancer implements Enhancer {
                     return;
                 }
                 m.touchDeletedAt();
-                m.setExists(false);
                 mqb.save();
                 event.setCanceled(true);
             }

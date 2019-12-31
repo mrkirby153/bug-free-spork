@@ -291,7 +291,6 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
 
     @Override
     public boolean delete() {
-        enhance();
         EnhancerUtils.withoutEnhancers(modelClass, enhancersToSkip.toArray(new String[0])).forEach(enhancer -> enhancer.onDelete(model, this));
         if(model != null) {
             String primaryKey = model.getPrimaryKey();
@@ -303,7 +302,6 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
     }
 
     public void create() {
-        enhance();
         EnhancerUtils.withoutEnhancers(modelClass, enhancersToSkip.toArray(new String[0])).forEach(enhancer -> enhancer.onInsert(model, this));
         log.trace("Creating model");
         if (model == null) {
@@ -322,7 +320,6 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
     }
 
     public void update() {
-        enhance();
         EnhancerUtils.withoutEnhancers(modelClass, enhancersToSkip.toArray(new String[0])).forEach(enhancer -> enhancer.onUpdate(model, this));
         if (model == null) {
             throw new IllegalArgumentException("Cannot update model that does not exist");

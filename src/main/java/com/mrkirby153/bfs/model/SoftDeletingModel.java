@@ -45,6 +45,13 @@ public class SoftDeletingModel extends Model {
                 Collectors.toList());
     }
 
+    /**
+     * Constructs a query builder that includes trashed data
+     *
+     * @param clazz The type of model
+     *
+     * @return The query builder
+     */
     public static <T extends SoftDeletingModel> ModelQueryBuilder<T> withTrashed(Class<T> clazz) {
         ModelQueryBuilder<T> mqb = new ModelQueryBuilder<>(clazz);
         mqb.withoutEnhancer(Constants.ENHANCER_SOFT_DELETE);
@@ -87,6 +94,9 @@ public class SoftDeletingModel extends Model {
         save();
     }
 
+    /**
+     * Force deletes a model
+     */
     public void forceDelete() {
         setForced(true);
         delete();
