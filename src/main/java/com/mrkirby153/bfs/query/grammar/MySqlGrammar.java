@@ -44,7 +44,7 @@ public class MySqlGrammar implements Grammar {
 
     @Override
     public String compileUpdate(QueryBuilder builder, String... columnNames) {
-        String columns = Arrays.stream(columnNames).map(this::wrapColumn)
+        String columns = Arrays.stream(columnNames).map(colName -> String.format("%s = ?", wrapColumn(colName)))
             .collect(Collectors.joining(", "));
         return String.format("UPDATE %s SET %s %s", wrap(builder.getTable()), columns,
             compileWheres(builder));
