@@ -214,12 +214,12 @@ public class Model {
      * @throws IllegalArgumentException If the {@link Table} annotation is missing
      */
     public String getTable() {
-        Table annotation = getClass().getAnnotation(Table.class);
-        if (annotation == null) {
-            throw new IllegalArgumentException(
-                String.format("The class %s is missing the @Table annotation", this.getClass()));
+        String table = ModelUtils.getTable(this.getClass());
+        if (table == null) {
+            throw new IllegalStateException(
+                String.format("%s has no table. Missing the @Table annotation?", this.getClass()));
         }
-        return annotation.value();
+        return table;
     }
 
 

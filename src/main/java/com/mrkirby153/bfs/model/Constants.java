@@ -14,4 +14,6 @@ public class Constants {
      * The default primary key of the model
      */
     public static final String DEFAULT_PRIMARY_KEY = "id";
+
+    public static final String ENHANCER_TIMESTAMPS = "_enhancert.timestamps";
 }
