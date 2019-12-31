@@ -42,14 +42,46 @@ public class Model {
         discoverColumns();
     }
 
+    /**
+     * Gets a {@link ModelQueryBuilder} to perform advanced queries on the model
+     *
+     * @param modelClass The model class
+     *
+     * @return The query builder
+     */
+    public static <T extends Model> ModelQueryBuilder<T> query(Class<T> modelClass) {
+        return new ModelQueryBuilder<>(modelClass);
+    }
 
     /**
-     * Checks if this is a valid model declaration.
+     * Gets a {@link ModelQueryBuilder} pre-populated with a where clause
      *
-     * @return True if the model is valid. False if it isn't
+     * @param modelClass The type of the model to get
+     * @param col        The column
+     * @param operator   The comparison operator
+     * @param data       The value of the data
+     *
+     * @return The query builder
      */
-    public boolean isModelValid() {
-        return this.getClass().isAnnotationPresent(Table.class);
+    public static <T extends Model> ModelQueryBuilder<T> where(Class<T> modelClass, String col,
+        String operator, Object data) {
+        ModelQueryBuilder<T> mqb = new ModelQueryBuilder<>(modelClass);
+        mqb.where(col, operator, data);
+        return mqb;
+    }
+
+    /**
+     * Gets a {@link ModelQueryBuilder} pre-populated with a where clause
+     *
+     * @param modelClass The type of model to get
+     * @param col        The column
+     * @param data       The data
+     *
+     * @return The query builder
+     */
+    public static <T extends Model> ModelQueryBuilder<T> where(Class<T> modelClass, String col,
+        Object data) {
+        return where(modelClass, col, "=", data);
     }
 
     /**
@@ -330,7 +362,7 @@ public class Model {
      * Deletes the model
      */
     public void delete() {
-        if(!exists) {
+        if (!exists) {
             throw new IllegalStateException("Cannot delete a model that does not exist");
         }
         getQueryBuilder().delete();
