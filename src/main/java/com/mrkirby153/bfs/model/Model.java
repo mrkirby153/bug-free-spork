@@ -32,9 +32,13 @@ public class Model {
      */
     private transient boolean exists = false; // All newly created models do not exist
 
+    private transient ModelQueryBuilder<Model> queryBuilder = new ModelQueryBuilder<>(
+        (Class<Model>) this.getClass());
+
 
     public Model() {
         discoverColumns();
+        queryBuilder.setModel(this);
     }
 
 
@@ -101,7 +105,7 @@ public class Model {
     /**
      * Sets the model's state cache
      */
-    private void updateModelState() {
+    void updateModelState() {
         log.trace("Saving model's state");
         this.state.clear();
         this.columns.forEach((col, field) -> {
@@ -279,5 +283,45 @@ public class Model {
      */
     public boolean exists() {
         return exists;
+    }
+
+    public Object getData(String column) {
+        if (!this.columns.containsKey(column)) {
+            throw new IllegalArgumentException(
+                String.format("Column %s does not exist on the model", column));
+        }
+        try {
+            return this.columns.get(column).get(this);
+        } catch (IllegalAccessException e) {
+            log.error("Error getting data for model {}", this.getClass(), e);
+        }
+        return null;
+    }
+
+    /**
+     * Saves the model
+     */
+    public void save() {
+        queryBuilder.save();
+    }
+
+    /**
+     * Updates the model
+     */
+    public void update() {
+        if (!exists) {
+            throw new IllegalStateException("Cannot update a model that does not exist");
+        }
+        queryBuilder.update();
+    }
+
+    /**
+     * Creates the model
+     */
+    public void create() {
+        if (exists) {
+            throw new IllegalStateException("Cannot create a model that already exists");
+        }
+        queryBuilder.create();
     }
 }

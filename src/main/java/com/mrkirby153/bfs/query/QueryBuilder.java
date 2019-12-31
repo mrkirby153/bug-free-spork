@@ -7,6 +7,9 @@ import com.mrkirby153.bfs.query.elements.OrderElement;
 import com.mrkirby153.bfs.query.elements.OrderElement.Direction;
 import com.mrkirby153.bfs.query.elements.WhereElement;
 import com.mrkirby153.bfs.query.elements.WhereElement.Type;
+import com.mrkirby153.bfs.query.event.QueryEvent;
+import com.mrkirby153.bfs.query.event.QueryEventListener;
+import com.mrkirby153.bfs.query.event.QueryEventManager;
 import com.mrkirby153.bfs.query.grammar.Grammar;
 import com.mrkirby153.bfs.query.grammar.MySqlGrammar;
 import lombok.Getter;
@@ -48,12 +51,10 @@ public class QueryBuilder {
         "&", "|", "^", "<<", ">>", "rlike", "regexp", "not regexp", "~", "~*", "!~*", "similar to",
         "not similar to", "not ilike", "~~*", "!~~*"
     };
-
-    // Give 5 threads for running queries
-    private static ExecutorService threadPool = Executors.newFixedThreadPool(5, new QueryThreadPoolFactory());
-
     public static ConnectionFactory defaultConnectionFactory;
-
+    // Give 5 threads for running queries
+    private static ExecutorService threadPool = Executors
+        .newFixedThreadPool(5, new QueryThreadPoolFactory());
     private final Grammar grammar;
 
     @Setter
@@ -103,6 +104,9 @@ public class QueryBuilder {
      * If the query should return distinct values
      */
     private boolean distinct = false;
+
+    @Getter
+    private HashMap<QueryEvent.Type, List<QueryEventListener>> eventListeners = new HashMap<>();
 
     public QueryBuilder() {
         this.grammar = MYSQL_GRAMMAR;
@@ -378,11 +382,11 @@ public class QueryBuilder {
     }
 
     public final List<DbRow> query() {
-        try{
+        try {
             return queryAsync().get();
-        } catch (InterruptedException e){
+        } catch (InterruptedException e) {
             // Ignore
-        } catch (ExecutionException e){
+        } catch (ExecutionException e) {
             log.error("Could not execute query", e);
         }
         return Collections.emptyList();
@@ -391,14 +395,17 @@ public class QueryBuilder {
     public CompletableFuture<List<DbRow>> queryAsync() {
         CompletableFuture<List<DbRow>> cf = new CompletableFuture<>();
         threadPool.submit(() -> {
+            QueryEventManager.callEvents(QueryEvent.Type.PRE_GET, this);
             String query = this.grammar.compileSelect(this);
-            try (Connection c = connectionFactory.getConnection(); PreparedStatement ps = c.prepareStatement(query)) {
+            try (Connection c = connectionFactory.getConnection(); PreparedStatement ps = c
+                .prepareStatement(query)) {
                 grammar.bind(this, ps);
                 log.trace("Executing SELECT: {}", ps);
-                try(ResultSet rs = ps.executeQuery()) {
+                try (ResultSet rs = ps.executeQuery()) {
+                    QueryEventManager.callEvents(QueryEvent.Type.POST_GET, this);
                     cf.complete(parse(rs));
                 }
-            } catch (SQLException e){
+            } catch (SQLException e) {
                 cf.completeExceptionally(e);
             }
         });
@@ -408,6 +415,7 @@ public class QueryBuilder {
     public final CompletableFuture<Integer> updateAsync(Pair<String, Object>... data) {
         CompletableFuture<Integer> cf = new CompletableFuture<>();
         threadPool.submit(() -> {
+            QueryEventManager.callEvents(QueryEvent.Type.PRE_UPDATE, this);
             List<Object> bindings = this.bindings.computeIfAbsent("update", a -> new ArrayList<>());
             bindings.addAll(Arrays.stream(data).map(Pair::getSecond).collect(Collectors.toList()));
             String query = this.grammar.compileUpdate(this,
@@ -416,7 +424,8 @@ public class QueryBuilder {
                 PreparedStatement ps = c.prepareStatement(query)) {
                 grammar.bind(this, ps);
                 log.trace("Executing UPDATE: {}", ps);
-                 cf.complete(ps.executeUpdate());
+                QueryEventManager.callEvents(QueryEvent.Type.POST_UPDATE, this);
+                cf.complete(ps.executeUpdate());
             } catch (SQLException e) {
                 cf.completeExceptionally(e);
             }
@@ -424,13 +433,18 @@ public class QueryBuilder {
         return cf;
     }
 
-    public final boolean delete() {
+    public  boolean delete() {
+        if (!QueryEventManager.callEvents(QueryEvent.Type.PRE_DELETE, this)) {
+            return true;
+        }
         String query = this.grammar.compileDelete(this);
         try (Connection c = connectionFactory.getConnection(); PreparedStatement ps = c
             .prepareStatement(query)) {
             grammar.bind(this, ps);
             log.trace("Executing DELETE: {}", ps);
-            return ps.executeUpdate() > 0;
+            boolean success = ps.executeUpdate() > 0;
+            QueryEventManager.callEvents(QueryEvent.Type.POST_DELETE, this);
+            return success;
         } catch (SQLException e) {
             log.error("Error when deleting", e);
         }
@@ -439,6 +453,9 @@ public class QueryBuilder {
 
     @SafeVarargs
     public final void insert(Pair<String, Object>... data) {
+        if (!QueryEventManager.callEvents(QueryEvent.Type.PRE_CREATE, this)) {
+            return;
+        }
         Arrays.stream(data).map(Pair::getSecond).forEach(d -> addBinding("insert", d));
         String query = this.grammar
             .compileInsert(this, Arrays.stream(data).map(Pair::getFirst).toArray(String[]::new));
@@ -447,12 +464,16 @@ public class QueryBuilder {
             this.grammar.bind(this, ps);
             log.trace("Executing INSERT: {}", ps);
             ps.executeUpdate();
+            QueryEventManager.callEvents(QueryEvent.Type.POST_CREATE, this);
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
     public final long insertWithGenerated(Pair<String, Object>... data) {
+        if (!QueryEventManager.callEvents(QueryEvent.Type.PRE_CREATE, this)) {
+            return 0;
+        }
         Arrays.stream(data).map(Pair::getSecond).forEach(d -> addBinding("insert", d));
         String query = this.grammar
             .compileInsert(this, Arrays.stream(data).map(Pair::getFirst).toArray(String[]::new));
@@ -465,6 +486,7 @@ public class QueryBuilder {
                 if (rs.next()) {
                     long generated = rs.getLong(1);
                     log.trace("Returned generated value {}", generated);
+                    QueryEventManager.callEvents(QueryEvent.Type.POST_CREATE, this);
                     return generated;
                 }
             }
@@ -482,6 +504,14 @@ public class QueryBuilder {
         return insertBulk(data, true);
     }
 
+    public final void registerListener(QueryEvent.Type type, QueryEventListener listener) {
+        this.eventListeners.computeIfAbsent(type, t -> new ArrayList<>()).add(listener);
+    }
+
+    public final void unregisterListener(QueryEvent.Type type, QueryEventListener listener) {
+        this.eventListeners.computeIfAbsent(type, t -> new ArrayList<>()).remove(listener);
+    }
+
     private List<Long> insertBulk(List<Map<String, Object>> data, boolean generated) {
         if (data.size() == 0) {
             throw new IllegalArgumentException("Can't insert nothing");
@@ -492,6 +522,9 @@ public class QueryBuilder {
                 throw new IllegalArgumentException(
                     "Inconsistent column count. Expected " + colCount + " got " + d.size());
             }
+        }
+        if (!QueryEventManager.callEvents(QueryEvent.Type.PRE_CREATE, this)) {
+            return Collections.emptyList();
         }
         data.stream().flatMap(a -> a.entrySet().stream()).map(Entry::getValue)
             .forEach(d -> addBinding("insert", d));
@@ -508,6 +541,7 @@ public class QueryBuilder {
                 while (rs.next()) {
                     gen.add(rs.getLong(1));
                 }
+                QueryEventManager.callEvents(QueryEvent.Type.POST_CREATE, this);
                 return gen;
             }
         } catch (SQLException e) {

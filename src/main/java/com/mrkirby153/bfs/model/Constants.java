@@ -15,5 +15,6 @@ public class Constants {
      */
     public static final String DEFAULT_PRIMARY_KEY = "id";
 
-    public static final String ENHANCER_TIMESTAMPS = "_enhancert.timestamps";
+    public static final String ENHANCER_TIMESTAMPS = "enhancer.timestamps";
+    public static final String ENHANCER_SOFT_DELETE = "enhancer.soft_delete";
 }

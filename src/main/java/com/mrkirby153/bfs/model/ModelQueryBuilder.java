@@ -1,5 +1,7 @@
 package com.mrkirby153.bfs.model;
 
+import com.mrkirby153.bfs.Pair;
+import com.mrkirby153.bfs.model.annotations.AutoIncrementing;
 import com.mrkirby153.bfs.model.enhancers.EnhancerUtils;
 import com.mrkirby153.bfs.query.DbRow;
 import com.mrkirby153.bfs.query.QueryBuilder;
@@ -7,6 +9,8 @@ import com.mrkirby153.bfs.query.elements.JoinElement.Type;
 import com.mrkirby153.bfs.query.elements.OrderElement.Direction;
 import com.mrkirby153.bfs.query.grammar.Grammar;
 import jdk.internal.joptsimple.internal.Strings;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.InvocationTargetException;
@@ -19,6 +23,10 @@ import java.util.stream.Collectors;
 public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
 
     private Class<T> modelClass;
+
+    @Setter
+    @Getter
+    private T model;
 
     private List<String> enhancersToSkip = new ArrayList<>();
 
@@ -272,5 +280,61 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
     public CompletableFuture<List<DbRow>> queryAsync() {
         enhance();
         return super.queryAsync();
+    }
+
+    @Override
+    public boolean delete() {
+        EnhancerUtils.getEnhancers(modelClass).forEach(enhancer -> enhancer.onDelete(model, this));
+        String primaryKey = model.getPrimaryKey();
+        Object data = model.getData(primaryKey);
+        log.trace("Deleting model with primary key {} = {}", primaryKey, data);
+        where(primaryKey, data);
+        return super.delete();
+    }
+
+    public void create() {
+        EnhancerUtils.getEnhancers(modelClass).forEach(enhancer -> enhancer.onInsert(model, this));
+        log.trace("Creating model");
+        if (model == null) {
+            throw new IllegalArgumentException("Cannot delete model that does not exist");
+        }
+        List<Pair<String, Object>> data = model.getDirtyColumns().stream()
+            .map(col -> new Pair<>(col, model.getData(col))).collect(Collectors.toList());
+        if (modelClass.isAnnotationPresent(AutoIncrementing.class)) {
+            long result = insertWithGenerated(data.toArray(new Pair[0]));
+            log.trace("Setting auto generated result {}", result);
+            model.setColumn(model.getPrimaryKey(), result);
+        } else {
+            insert(data.toArray(new Pair[0]));
+        }
+    }
+
+    public void update() {
+        EnhancerUtils.getEnhancers(modelClass).forEach(enhancer -> enhancer.onUpdate(model, this));
+        if (model == null) {
+            throw new IllegalArgumentException("Cannot update model that does not exist");
+        }
+
+        List<Pair<String, Object>> data = model.getDirtyColumns().stream()
+            .map(col -> new Pair<>(col, model.getData(col))).collect(Collectors.toList());
+        where(model.getPrimaryKey(), model.getData(model.getPrimaryKey()));
+        update(data.toArray(new Pair[0]));
+    }
+
+    public void save() {
+        if (model == null) {
+            throw new IllegalArgumentException("Cannot save model that does not exist");
+        }
+        log.trace("Saving model {}", model.getClass());
+        if (!model.isDirty()) {
+            log.trace("Skipping save. Model is not dirty");
+            return;
+        }
+        if (!model.exists()) {
+            create();
+        } else {
+            update();
+        }
+        model.updateModelState();
     }
 }

@@ -11,6 +11,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class EnhancerUtils {
@@ -33,7 +34,8 @@ public class EnhancerUtils {
         if (modelEnhancers == null) {
             Enhancers annotation = model.getAnnotation(Enhancers.class);
             if (annotation != null) {
-                modelEnhancers = Arrays.asList(annotation.value());
+                modelEnhancers = Arrays.stream(annotation.value()).map(
+                    com.mrkirby153.bfs.model.annotations.Enhancer::value).collect(Collectors.toList());
             } else {
                 modelEnhancers = new ArrayList<>();
             }

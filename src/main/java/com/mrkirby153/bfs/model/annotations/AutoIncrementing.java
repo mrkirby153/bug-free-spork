@@ -3,12 +3,15 @@ package com.mrkirby153.bfs.model.annotations;
 import com.mrkirby153.bfs.model.Constants;
 
 import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
  * Annotation determining if the model is auto-incrementing
  */
 @Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
 public @interface AutoIncrementing {
 
     /**
