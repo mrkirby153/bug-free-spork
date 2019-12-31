@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,7 +38,13 @@ public class EnhancerUtils {
                 modelEnhancers = Arrays.stream(annotation.value()).map(
                     com.mrkirby153.bfs.model.annotations.Enhancer::value).collect(Collectors.toList());
             } else {
-                modelEnhancers = new ArrayList<>();
+                com.mrkirby153.bfs.model.annotations.Enhancer enhancerAnnotation = model.getAnnotation(
+                    com.mrkirby153.bfs.model.annotations.Enhancer.class);
+                if(enhancerAnnotation != null) {
+                    modelEnhancers = Collections.singletonList(enhancerAnnotation.value());
+                } else {
+                    modelEnhancers = new ArrayList<>();
+                }
             }
             log.trace("Caching enhancers for {}", model);
             modelEnhancerCache.put(model, modelEnhancers);
@@ -51,6 +58,7 @@ public class EnhancerUtils {
                     Enhancer e = clazz.getConstructor().newInstance();
                     log.trace("Caching instance of enhancer {}", clazz);
                     cachedEnhancers.put(clazz, e);
+                    enhancers.add(e);
                 } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException ex) {
                     log.error("Could not instantiate enhancer {}", clazz, ex);
                 }
