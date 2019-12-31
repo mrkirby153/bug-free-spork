@@ -2,6 +2,8 @@ package com.mrkirby153.bfs.model;
 
 import com.mrkirby153.bfs.model.annotations.Enhancer;
 import com.mrkirby153.bfs.model.enhancers.SoftDeleteEnhancer;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.lang.annotation.ElementType;
@@ -20,6 +22,10 @@ import java.util.stream.Collectors;
 public class SoftDeletingModel extends Model {
 
     private transient List<String> deletedAtCols = new ArrayList<>();
+
+    @Getter
+    @Setter
+    private boolean forced = false;
 
     public SoftDeletingModel() {
         scanForDeletedAt();
@@ -68,6 +74,23 @@ public class SoftDeletingModel extends Model {
             log.debug("Touching soft delete field {}", col);
             setColumn(col, now);
         });
+    }
+
+    /**
+     * Restores a model that was previously soft deleted
+     */
+    public void restore() {
+        setExists(true);
+        getDeletedAtCols(getClass()).forEach(col -> {
+            setColumn(col, null);
+        });
+        save();
+    }
+
+    public void forceDelete() {
+        setForced(true);
+        delete();
+        setForced(false);
     }
 
     /**

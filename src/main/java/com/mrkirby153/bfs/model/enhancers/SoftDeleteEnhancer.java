@@ -44,7 +44,12 @@ public class SoftDeleteEnhancer implements Enhancer {
                 .getQueryBuilder();
             if (mqb.getModel() instanceof SoftDeletingModel) {
                 SoftDeletingModel m = (SoftDeletingModel) mqb.getModel();
+                // If we're force deleting models
+                if (m.isForced()) {
+                    return;
+                }
                 m.touchDeletedAt();
+                m.setExists(false);
                 mqb.save();
                 event.setCanceled(true);
             }
