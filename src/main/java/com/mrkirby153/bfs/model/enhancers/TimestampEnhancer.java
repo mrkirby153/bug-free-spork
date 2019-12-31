@@ -34,22 +34,17 @@ public class TimestampEnhancer implements Enhancer {
     @Override
     public void onInsert(Model model, ModelQueryBuilder<? extends Model> builder) {
         cacheModelFields(model);
-        Timestamp now = new Timestamp(System.currentTimeMillis());
-        List<String> dirtyCols = model.getDirtyColumns();
-        List<String> cached = new ArrayList<>(
-            createdTimestampColCache.getOrDefault(model.getClass(), Collections
-                .emptyList()));
-        if (!cached.isEmpty()) {
-            cached.removeAll(dirtyCols); // Remove dirty cols
-            log.debug("Updating created at timestamps on columns {} on {}",
-                String.join(",", cached), dirtyCols.getClass());
-        }
-        cached.forEach(col -> model.setColumn(col, now));
+        touchCreatedAtFields(model);
+        touchUpdatedAtFields(model);
     }
 
     @Override
     public void onUpdate(Model model, ModelQueryBuilder<? extends Model> builder) {
         cacheModelFields(model);
+        touchUpdatedAtFields(model);
+    }
+
+    private void touchUpdatedAtFields(Model model) {
         Timestamp now = new Timestamp(System.currentTimeMillis());
         List<String> dirtyCols = model.getDirtyColumns();
         List<String> cached = new ArrayList<>(
@@ -58,6 +53,19 @@ public class TimestampEnhancer implements Enhancer {
         if (!cached.isEmpty()) {
             cached.removeAll(dirtyCols); // Remove dirty cols
             log.debug("Updating updated at timestamps on columns {} on {}",
+                String.join(",", cached), dirtyCols.getClass());
+        }
+        cached.forEach(col -> model.setColumn(col, now));
+    }
+    private void touchCreatedAtFields(Model model) {
+        Timestamp now = new Timestamp(System.currentTimeMillis());
+        List<String> dirtyCols = model.getDirtyColumns();
+        List<String> cached = new ArrayList<>(
+            createdTimestampColCache.getOrDefault(model.getClass(), Collections
+                .emptyList()));
+        if (!cached.isEmpty()) {
+            cached.removeAll(dirtyCols); // Remove dirty cols
+            log.debug("Updating created at timestamps on columns {} on {}",
                 String.join(",", cached), dirtyCols.getClass());
         }
         cached.forEach(col -> model.setColumn(col, now));
