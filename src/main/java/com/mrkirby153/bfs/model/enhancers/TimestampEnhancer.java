@@ -5,7 +5,6 @@ import com.mrkirby153.bfs.model.Enhancer;
 import com.mrkirby153.bfs.model.Model;
 import com.mrkirby153.bfs.model.ModelQueryBuilder;
 import com.mrkirby153.bfs.model.ModelUtils;
-import jdk.internal.joptsimple.internal.Strings;
 import lombok.extern.slf4j.Slf4j;
 
 import java.lang.annotation.ElementType;
@@ -26,14 +25,14 @@ import java.util.Set;
  * Enhancer responsible for updating created at and updated at timestamp fields
  */
 @Slf4j
-public class TimestampEnhancer implements Enhancer<Model> {
+public class TimestampEnhancer implements Enhancer {
 
     private static Set<Class<? extends Model>> cachedModels = new HashSet<>();
     private static Map<Class<? extends Model>, List<String>> createdTimestampColCache = new HashMap<>();
     private static Map<Class<? extends Model>, List<String>> updatedTimestampColCache = new HashMap<>();
 
     @Override
-    public void onInsert(Model model, ModelQueryBuilder<Model> builder) {
+    public void onInsert(Model model, ModelQueryBuilder<? extends Model> builder) {
         cacheModelFields(model);
         Timestamp now = new Timestamp(System.currentTimeMillis());
         List<String> dirtyCols = model.getDirtyColumns();
@@ -43,13 +42,13 @@ public class TimestampEnhancer implements Enhancer<Model> {
         if (!cached.isEmpty()) {
             cached.removeAll(dirtyCols); // Remove dirty cols
             log.debug("Updating created at timestamps on columns {} on {}",
-                Strings.join(cached, ","), dirtyCols.getClass());
+                String.join(",", cached), dirtyCols.getClass());
         }
         cached.forEach(col -> model.setColumn(col, now));
     }
 
     @Override
-    public void onUpdate(Model model, ModelQueryBuilder<Model> builder) {
+    public void onUpdate(Model model, ModelQueryBuilder<? extends Model> builder) {
         cacheModelFields(model);
         Timestamp now = new Timestamp(System.currentTimeMillis());
         List<String> dirtyCols = model.getDirtyColumns();
@@ -59,7 +58,7 @@ public class TimestampEnhancer implements Enhancer<Model> {
         if (!cached.isEmpty()) {
             cached.removeAll(dirtyCols); // Remove dirty cols
             log.debug("Updating updated at timestamps on columns {} on {}",
-                Strings.join(cached, ","), dirtyCols.getClass());
+                String.join(",", cached), dirtyCols.getClass());
         }
         cached.forEach(col -> model.setColumn(col, now));
     }

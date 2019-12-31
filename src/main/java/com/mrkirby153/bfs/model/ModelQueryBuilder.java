@@ -8,7 +8,6 @@ import com.mrkirby153.bfs.query.QueryBuilder;
 import com.mrkirby153.bfs.query.elements.JoinElement.Type;
 import com.mrkirby153.bfs.query.elements.OrderElement.Direction;
 import com.mrkirby153.bfs.query.grammar.Grammar;
-import jdk.internal.joptsimple.internal.Strings;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -76,9 +75,9 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
             .withoutEnhancers(modelClass, enhancersToSkip.toArray(new String[0]));
         log.trace("Enhancing query builder for {} with {} enhancers: ({})", modelClass,
             enhancers.size(),
-            Strings.join(enhancers.stream().map(Enhancer::name).collect(Collectors.toList()), ","));
+            enhancers.stream().map(Enhancer::name).collect(Collectors.joining(",")));
         log.trace("{} enhancers have been excluded ({})", enhancersToSkip.size(),
-            Strings.join(enhancersToSkip, ","));
+            String.join(",", enhancersToSkip));
         enhancers.forEach(enhancer -> enhancer.enhance(this));
     }
 

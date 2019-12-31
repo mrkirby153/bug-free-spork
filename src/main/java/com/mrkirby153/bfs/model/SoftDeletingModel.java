@@ -2,7 +2,6 @@ package com.mrkirby153.bfs.model;
 
 import com.mrkirby153.bfs.model.annotations.Enhancer;
 import com.mrkirby153.bfs.model.enhancers.SoftDeleteEnhancer;
-import jdk.internal.joptsimple.internal.Strings;
 import lombok.extern.slf4j.Slf4j;
 
 import java.lang.annotation.ElementType;
@@ -55,11 +54,11 @@ public class SoftDeletingModel extends Model {
             }
         }
         log.trace("Identified {} deleted at columns: ({})", deletedAtCols.size(),
-            Strings.join(deletedAtCols, ", "));
+            String.join(", ", deletedAtCols));
         if (deletedAtCols.size() > 1) {
             log.warn(
                 "Found more than 1 soft deleting columns: {}. This may cause unintended side effects",
-                Strings.join(deletedAtCols, ", "));
+                String.join(", ", deletedAtCols));
         }
     }
 
