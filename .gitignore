@@ -17,3 +17,5 @@
 
 classes/
 .gradle
+build/
+gradle.properties

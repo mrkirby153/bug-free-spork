@@ -21,7 +21,7 @@ public class EnhancerUtils {
 
     /**
      * Gets a list of enhancers for the model.
-     * <br/>
+     * <br>
      * Due to the potentially frequent accessing of this data, the enhancers and their instances
      * are cached on first use and the cached values are returned when present
      *

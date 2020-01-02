@@ -1,6 +1,8 @@
 // Apply the java plugin to add support for Java
 apply plugin: 'java'
 
+apply plugin: 'maven-publish'
+
 // In this section you declare where to find the dependencies of your project
 repositories {
     // Use 'jcenter' for resolving your dependencies.
@@ -26,4 +28,43 @@ dependencies {
 
     compileOnly 'org.projectlombok:lombok:1.18.10'
     annotationProcessor 'org.projectlombok:lombok:1.18.10'
+}
+
+task sourceJar(type: Jar, dependsOn: project.classes) {
+    classifier 'sources'
+    from sourceSets.main.allSource
+}
+
+task javadocJar(type: Jar, dependsOn: project.javadoc) {
+    from javadoc.destinationDir
+    classifier 'javadoc'
+}
+
+def propertyOrEnv(property, env) {
+    return project.hasProperty(property)? project.properties[property] : System.getenv(env)
+}
+
+publishing {
+    tasks.publish.dependsOn build
+    repositories {
+        maven {
+            name = "mrkirby153"
+            if (project.version.endsWith("-SNAPSHOT")) {
+                url = "https://repo.mrkirby153.com/repository/maven-snapshots/"
+            } else {
+                url = "https://repo.mrkirby153.com/repository/maven-release/"
+            }
+            credentials {
+                username propertyOrEnv('repositoryUsername', 'REPO_USERNAME')
+                password propertyOrEnv('repositoryPassword', 'REPO_PASS')
+            }
+        }
+    }
+    publications {
+        jar(MavenPublication) {
+            from components.java
+            artifact tasks.sourceJar
+            artifact tasks.javadocJar
+        }
+    }
 }
