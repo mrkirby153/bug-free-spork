@@ -18,6 +18,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -35,7 +36,7 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
     private boolean enhanced = false;
 
     public ModelQueryBuilder(Class<T> clazz) {
-        this(QueryBuilder.MYSQL_GRAMMAR, clazz);
+        this(QueryBuilder.DEFAULT_GRAMMAR, clazz);
     }
 
     public ModelQueryBuilder(Grammar grammar, Class<T> clazz) {
@@ -75,7 +76,7 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
     }
 
     private void enhance() {
-        if(enhanced) {
+        if (enhanced) {
             return;
         }
         List<Enhancer> enhancers = EnhancerUtils
@@ -287,14 +288,16 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
     @Override
     public CompletableFuture<List<DbRow>> queryAsync() {
         enhance();
-        EnhancerUtils.withoutEnhancers(modelClass, enhancersToSkip.toArray(new String[0])).forEach(enhancer -> enhancer.onQuery(this));
+        EnhancerUtils.withoutEnhancers(modelClass, enhancersToSkip.toArray(new String[0]))
+            .forEach(enhancer -> enhancer.onQuery(this));
         return super.queryAsync();
     }
 
     @Override
     public boolean delete() {
-        EnhancerUtils.withoutEnhancers(modelClass, enhancersToSkip.toArray(new String[0])).forEach(enhancer -> enhancer.onDelete(model, this));
-        if(model != null) {
+        EnhancerUtils.withoutEnhancers(modelClass, enhancersToSkip.toArray(new String[0]))
+            .forEach(enhancer -> enhancer.onDelete(model, this));
+        if (model != null) {
             String primaryKey = model.getPrimaryKey();
             Object data = model.getData(primaryKey);
             log.trace("Deleting model with primary key {} = {}", primaryKey, data);
@@ -303,26 +306,40 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
         return super.delete();
     }
 
-    public void create() {
-        EnhancerUtils.withoutEnhancers(modelClass, enhancersToSkip.toArray(new String[0])).forEach(enhancer -> enhancer.onInsert(model, this));
+    public CompletableFuture<Void> createAsync() {
+        EnhancerUtils.withoutEnhancers(modelClass, enhancersToSkip.toArray(new String[0]))
+            .forEach(enhancer -> enhancer.onInsert(model, this));
         log.trace("Creating model");
         if (model == null) {
-            throw new IllegalArgumentException("Cannot delete model that does not exist");
+            throw new IllegalArgumentException("Cannot create model that does not exist");
         }
         List<Pair<String, Object>> data = model.getDirtyColumns().stream()
             .map(col -> new Pair<>(col, model.getData(col))).collect(Collectors.toList());
         if (modelClass.isAnnotationPresent(AutoIncrementing.class)) {
-            long result = insertWithGenerated(data.toArray(new Pair[0]));
-            log.trace("Setting auto generated result {}", result);
-            model.setColumn(model.getPrimaryKey(), result);
-            model.setExists(true);
+            return insertWithGenerated(data).thenApply(result -> {
+                log.trace("Setting auto generated result {}", result);
+                model.setColumn(model.getPrimaryKey(), result);
+                model.setExists(true);
+                return null;
+            });
         } else {
-            insert(data.toArray(new Pair[0]));
+            return insert(data);
         }
     }
 
-    public void update() {
-        EnhancerUtils.withoutEnhancers(modelClass, enhancersToSkip.toArray(new String[0])).forEach(enhancer -> enhancer.onUpdate(model, this));
+    public void create() {
+        try {
+            createAsync().get();
+        } catch (InterruptedException ignored) {
+            // Ignored
+        } catch (ExecutionException e) {
+            log.error("Could not create {}", this, e);
+        }
+    }
+
+    public CompletableFuture<Integer> updateAsync() {
+        EnhancerUtils.withoutEnhancers(modelClass, enhancersToSkip.toArray(new String[0]))
+            .forEach(enhancer -> enhancer.onUpdate(model, this));
         if (model == null) {
             throw new IllegalArgumentException("Cannot update model that does not exist");
         }
@@ -330,12 +347,22 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
         List<Pair<String, Object>> data = model.getDirtyColumns().stream()
             .map(col -> new Pair<>(col, model.getData(col))).collect(Collectors.toList());
         where(model.getPrimaryKey(), model.getData(model.getPrimaryKey()));
-        update(data.toArray(new Pair[0]));
+        return updateAsync(data);
+    }
+
+    public void update() {
+        try {
+            updateAsync().get();
+        } catch (InterruptedException ignored) {
+            // Ignored
+        } catch (ExecutionException e) {
+            log.error("Could not update {}", this, e);
+        }
     }
 
     public void save() {
         if (model == null) {
-            throw new IllegalArgumentException("Cannot save model that does not exist");
+            throw new IllegalStateException("Cannot save model that does not exist");
         }
         log.trace("Saving model {}", model.getClass());
         if (!model.isDirty()) {
@@ -348,5 +375,23 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
             update();
         }
         model.updateModelState();
+    }
+
+    public CompletableFuture<Void> saveAsync() {
+        if (model == null) {
+            throw new IllegalStateException("Cannot save a model that does not exist");
+        }
+        log.trace("Saving model {} async", model.getClass());
+        if (!model.isDirty()) {
+            log.trace("Skipping save. Model is not dirty");
+            return CompletableFuture.completedFuture(null);
+        }
+        CompletableFuture<?> cf;
+        if (!model.exists()) {
+            cf = createAsync();
+        } else {
+            cf = updateAsync();
+        }
+        return cf.thenRun(() -> model.updateModelState());
     }
 }

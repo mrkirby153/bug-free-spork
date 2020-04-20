@@ -225,6 +225,6 @@ public class SoftDeletingModelQueryBuilder<T extends SoftDeletingModel> extends
         SoftDeletingModel.getDeletedAtCols(getModelClass()).forEach(col -> {
             data.add(new Pair<>(col, null));
         });
-        update(data.toArray(new Pair[0]));
+        update(data);
     }
 }

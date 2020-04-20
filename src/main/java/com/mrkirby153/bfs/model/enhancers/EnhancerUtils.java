@@ -9,15 +9,15 @@ import lombok.extern.slf4j.Slf4j;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 public class EnhancerUtils {
 
-    private static Map<Class<? extends Model>, List<Class<? extends Enhancer>>> modelEnhancerCache = new HashMap<>();
-    private static Map<Class<? extends Enhancer>, Enhancer> cachedEnhancers = new HashMap<>();
+    private static final Map<Class<? extends Model>, List<Class<? extends Enhancer>>> modelEnhancerCache = new ConcurrentHashMap<>();
+    private static final Map<Class<? extends Enhancer>, Enhancer> cachedEnhancers = new ConcurrentHashMap<>();
 
     /**
      * Gets a list of enhancers for the model.

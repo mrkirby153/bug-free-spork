@@ -13,10 +13,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Slf4j
 public class Model {
+
+    private static final Map<Class<?>, List<ModelField>> fieldCache = new ConcurrentHashMap<>();
 
     /**
      * The mapping of column names to fields
@@ -113,6 +117,15 @@ public class Model {
      */
     private void discoverColumns(Class<?> clazz) {
         log.trace("Discovering columns in {}", getClass());
+        List<ModelField> cached = fieldCache.get(clazz);
+        if (cached != null) {
+            log.trace("Using cached columns for {}", getClass());
+            cached.forEach(modelField -> {
+                columns.put(modelField.getName(), modelField.getField());
+            });
+            return;
+        }
+        cached = new ArrayList<>();
         for (Field f : clazz.getDeclaredFields()) {
             if (!f.isAccessible()) {
                 f.setAccessible(true);
@@ -132,7 +145,9 @@ public class Model {
                     : f.getName();
             log.trace("Discovered column {} on class {}", columnName, clazz);
             this.columns.put(columnName, f);
+            cached.add(new ModelField(columnName, f));
         }
+        fieldCache.put(clazz, cached);
     }
 
     /**
@@ -339,6 +354,15 @@ public class Model {
     }
 
     /**
+     * Saves the model async
+     *
+     * @return A completable future
+     */
+    public CompletableFuture<Void> saveAsync() {
+        return getQueryBuilder().saveAsync();
+    }
+
+    /**
      * Updates the model
      */
     public void update() {
@@ -346,6 +370,18 @@ public class Model {
             throw new IllegalStateException("Cannot update a model that does not exist");
         }
         getQueryBuilder().update();
+    }
+
+    /**
+     * Updates the model async
+     *
+     * @return A completable future with the number of rows updated
+     */
+    public CompletableFuture<Integer> updateAsync() {
+        if (!exists) {
+            throw new IllegalStateException("Cannot update a model that does not exist");
+        }
+        return getQueryBuilder().updateAsync();
     }
 
     /**
@@ -359,6 +395,18 @@ public class Model {
     }
 
     /**
+     * Creates the model async
+     *
+     * @return A completable future completed when the model is created
+     */
+    public CompletableFuture<Void> createAsync() {
+        if (exists) {
+            throw new IllegalStateException("Cannot create a model that already exists");
+        }
+        return getQueryBuilder().createAsync();
+    }
+
+    /**
      * Deletes the model
      */
     public void delete() {
@@ -366,6 +414,18 @@ public class Model {
             throw new IllegalStateException("Cannot delete a model that does not exist");
         }
         getQueryBuilder().delete();
+    }
+
+    /**
+     * Deletes the model async
+     *
+     * @return A completable future that's completed with if the model was created successfully
+     */
+    public CompletableFuture<Boolean> deleteAsync() {
+        if (!exists) {
+            throw new IllegalArgumentException("Cannot delete a model that does not exist");
+        }
+        return getQueryBuilder().deleteAsync();
     }
 
     @Override

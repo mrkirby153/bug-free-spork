@@ -15,11 +15,11 @@ import java.lang.reflect.Field;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Enhancer responsible for updating created at and updated at timestamp fields
@@ -27,9 +27,9 @@ import java.util.Set;
 @Slf4j
 public class TimestampEnhancer implements Enhancer {
 
-    private static Set<Class<? extends Model>> cachedModels = new HashSet<>();
-    private static Map<Class<? extends Model>, List<String>> createdTimestampColCache = new HashMap<>();
-    private static Map<Class<? extends Model>, List<String>> updatedTimestampColCache = new HashMap<>();
+    private static final Set<Class<? extends Model>> cachedModels = new HashSet<>();
+    private static final Map<Class<? extends Model>, List<String>> createdTimestampColCache = new ConcurrentHashMap<>();
+    private static final Map<Class<? extends Model>, List<String>> updatedTimestampColCache = new ConcurrentHashMap<>();
 
     @Override
     public void onInsert(Model model, ModelQueryBuilder<? extends Model> builder) {
@@ -44,6 +44,11 @@ public class TimestampEnhancer implements Enhancer {
         touchUpdatedAtFields(model);
     }
 
+    @Override
+    public String name() {
+        return Constants.ENHANCER_TIMESTAMPS;
+    }
+
     private void touchUpdatedAtFields(Model model) {
         Timestamp now = new Timestamp(System.currentTimeMillis());
         List<String> dirtyCols = model.getDirtyColumns();
@@ -53,10 +58,11 @@ public class TimestampEnhancer implements Enhancer {
         if (!cached.isEmpty()) {
             cached.removeAll(dirtyCols); // Remove dirty cols
             log.debug("Updating updated at timestamps on columns {} on {}",
-                String.join(",", cached), dirtyCols.getClass());
+                String.join(",", cached), model.getClass());
         }
         cached.forEach(col -> model.setColumn(col, now));
     }
+
     private void touchCreatedAtFields(Model model) {
         Timestamp now = new Timestamp(System.currentTimeMillis());
         List<String> dirtyCols = model.getDirtyColumns();
@@ -66,19 +72,13 @@ public class TimestampEnhancer implements Enhancer {
         if (!cached.isEmpty()) {
             cached.removeAll(dirtyCols); // Remove dirty cols
             log.debug("Updating created at timestamps on columns {} on {}",
-                String.join(",", cached), dirtyCols.getClass());
+                String.join(",", cached), model.getClass());
         }
         cached.forEach(col -> model.setColumn(col, now));
     }
 
-
-    @Override
-    public String name() {
-        return Constants.ENHANCER_TIMESTAMPS;
-    }
-
     private void cacheModelFields(Model model) {
-        if (cachedModels.contains(model)) {
+        if (cachedModels.contains(model.getClass())) {
             return; // Don't re-cache fields
         }
         List<String> created = new ArrayList<>();
@@ -98,7 +98,9 @@ public class TimestampEnhancer implements Enhancer {
                 }
             }
         }
-        cachedModels.add(model.getClass());
+        synchronized (cachedModels) {
+            cachedModels.add(model.getClass());
+        }
         createdTimestampColCache.put(model.getClass(), created);
         updatedTimestampColCache.put(model.getClass(), updated);
     }
