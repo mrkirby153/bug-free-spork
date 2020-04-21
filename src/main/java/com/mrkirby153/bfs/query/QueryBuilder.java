@@ -12,10 +12,12 @@ import com.mrkirby153.bfs.query.event.QueryEventListener;
 import com.mrkirby153.bfs.query.event.QueryEventManager;
 import com.mrkirby153.bfs.query.grammar.Grammar;
 import com.mrkirby153.bfs.query.grammar.MySqlGrammar;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.intellij.lang.annotations.Language;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -54,6 +56,7 @@ public class QueryBuilder {
     public static Grammar DEFAULT_GRAMMAR = new MySqlGrammar();
     public static ConnectionFactory defaultConnectionFactory;
     // Give 5 threads for running queries
+    @Getter(AccessLevel.PACKAGE)
     private static ExecutorService threadPool = Executors
         .newFixedThreadPool(5, new QueryThreadPoolFactory());
     private final Grammar grammar;
@@ -529,6 +532,51 @@ public class QueryBuilder {
 
     public final void unregisterListener(QueryEvent.Type type, QueryEventListener listener) {
         this.eventListeners.computeIfAbsent(type, t -> new ArrayList<>()).remove(listener);
+    }
+
+    /**
+     * Executes a raw SQL query async
+     *
+     * @param sql      The raw SQL
+     * @param bindings A list of bindings for the statement
+     *
+     * @return A list of {@link DbRow Rows}
+     */
+    public CompletableFuture<List<DbRow>> rawAsync(@Language("SQL") String sql, Object... bindings) {
+        return CompletableFuture.supplyAsync(() -> {
+            try (Connection con = connectionFactory.getConnection();
+                PreparedStatement statement = con.prepareStatement(sql)) {
+                int index = 1;
+                for (Object o : bindings) {
+                    statement.setObject(index++, o);
+                }
+                log.trace("Executing query: {}", statement);
+                try (ResultSet rs = statement.executeQuery()) {
+                    return parse(rs);
+                }
+            } catch (SQLException e) {
+                throw new CompletionException(e);
+            }
+        });
+    }
+
+    /**
+     * Executes a raw SQL Query
+     *
+     * @param sql      The raw SQL
+     * @param bindings A list of bindings for the statement
+     *
+     * @return A list of {@link DbRow Rows}
+     */
+    public List<DbRow> raw(@Language("SQL") String sql, Object... bindings) {
+        try {
+            return rawAsync(sql, bindings).get();
+        } catch (InterruptedException e) {
+            // Ignored
+        } catch (ExecutionException e) {
+            log.error("Error executing raw query", e);
+        }
+        return new ArrayList<>();
     }
 
     private CompletableFuture<List<Long>> insertBulk(List<Map<String, Object>> data,
