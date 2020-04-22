@@ -294,6 +294,14 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
     }
 
     @Override
+    public List<DbRow> query() {
+        enhance();
+        EnhancerUtils.withoutEnhancers(modelClass, enhancersToSkip.toArray(new String[0]))
+            .forEach(enhancer -> enhancer.onQuery(this));
+        return super.query();
+    }
+
+    @Override
     public boolean delete() {
         EnhancerUtils.withoutEnhancers(modelClass, enhancersToSkip.toArray(new String[0]))
             .forEach(enhancer -> enhancer.onDelete(model, this));

@@ -385,7 +385,7 @@ public class QueryBuilder {
         return -1;
     }
 
-    public final List<DbRow> query() {
+    public List<DbRow> query() {
         try {
             return queryAsync().get();
         } catch (InterruptedException e) {
