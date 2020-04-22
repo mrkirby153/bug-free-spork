@@ -526,6 +526,36 @@ public class QueryBuilder {
         return insertBulk(data, true);
     }
 
+    public final CompletableFuture<Boolean> existsAsync() {
+        return CompletableFuture.supplyAsync(() -> {
+            String query = grammar.compileExists(this);
+            try(Connection con = connectionFactory.getConnection();
+                PreparedStatement ps = con.prepareStatement(query)) {
+                grammar.bind(this, ps);
+                log.trace("Executing exists: {}", ps);
+                try(ResultSet rs = ps.executeQuery()) {
+                    if(rs.next()) {
+                        return rs.getBoolean("exists");
+                    }
+                }
+            } catch (SQLException e) {
+                throw new CompletionException(e);
+            }
+            return false;
+        }, threadPool);
+    }
+
+    public final boolean exists() {
+        try {
+            return existsAsync().get();
+        } catch (InterruptedException e) {
+            // Ignored
+        } catch (ExecutionException e) {
+            log.error("Could not execute exists query", e);
+        }
+        return false;
+    }
+
     public final void registerListener(QueryEvent.Type type, QueryEventListener listener) {
         this.eventListeners.computeIfAbsent(type, t -> new ArrayList<>()).add(listener);
     }

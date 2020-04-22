@@ -52,7 +52,8 @@ public class SoftDeletingModel extends Model {
      *
      * @return The query builder
      */
-    public static <T extends SoftDeletingModel> SoftDeletingModelQueryBuilder<T> withTrashed(Class<T> clazz) {
+    public static <T extends SoftDeletingModel> SoftDeletingModelQueryBuilder<T> withTrashed(
+        Class<T> clazz) {
         return new SoftDeletingModelQueryBuilder<>(clazz);
     }
 
@@ -99,6 +100,22 @@ public class SoftDeletingModel extends Model {
         setForced(true);
         delete();
         setForced(false);
+    }
+
+    /**
+     * Checks if a model is trashed. A model is considered trashed if any field annotated with
+     * {@link SoftDeleteField} is not null
+     *
+     * @return True if the model is trashed
+     */
+    public boolean isTrashed() {
+        boolean exists = true;
+        for (String col : getDeletedAtCols(getClass())) {
+            if (getData(col) != null) {
+                exists = false;
+            }
+        }
+        return exists;
     }
 
     /**
