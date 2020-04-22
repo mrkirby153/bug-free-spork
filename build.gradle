@@ -1,6 +1,9 @@
-apply plugin: 'java'
+plugins {
+    id 'java'
+    id 'maven-publish'
 
-apply plugin: 'maven-publish'
+    id 'io.freefair.lombok' version '5.0.0'
+}
 
 repositories {
     jcenter()
@@ -28,7 +31,7 @@ dependencies {
 
 task sourceJar(type: Jar, dependsOn: project.classes) {
     classifier 'sources'
-    from sourceSets.main.allSource
+    from sourceSets.main.delombokTask
 }
 
 task javadocJar(type: Jar, dependsOn: project.javadoc) {

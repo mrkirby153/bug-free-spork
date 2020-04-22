@@ -52,6 +52,7 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
             try {
                 T instance = this.modelClass.getConstructor().newInstance();
                 instance.hydrate(row);
+                results.add(instance);
             } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
                 log.error("Could not instantiate class {}", modelClass, e);
             }
