@@ -1,7 +1,3 @@
-plugins {
-    id 'net.researchgate.release' version '2.6.0'
-}
-
 apply plugin: 'java'
 
 apply plugin: 'maven-publish'
@@ -16,7 +12,7 @@ repositories {
 }
 
 group = 'com.mrkirby153'
-version = '2.0-SNAPSHOT'
+version = '2.0'
 targetCompatibility = '1.8'
 sourceCompatibility = '1.8'
 
@@ -52,7 +48,7 @@ publishing {
             if (project.version.endsWith("-SNAPSHOT")) {
                 url = "https://repo.mrkirby153.com/repository/maven-snapshots/"
             } else {
-                url = "https://repo.mrkirby153.com/repository/maven-release/"
+                url = "https://repo.mrkirby153.com/repository/maven-releases/"
             }
             credentials {
                 username propertyOrEnv('repositoryUsername', 'REPO_USERNAME')
@@ -68,11 +64,3 @@ publishing {
         }
     }
 }
-
-release {
-    git {
-        signTag = true
-    }
-}
-
-afterReleaseBuild.dependsOn publish
