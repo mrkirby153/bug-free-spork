@@ -434,10 +434,10 @@ public class QueryBuilder {
     }
 
     public CompletableFuture<Boolean> deleteAsync() {
-        if (QueryEventManager.callEvents(QueryEvent.Type.PRE_DELETE, this)) {
-            return CompletableFuture.completedFuture(true);
-        }
         return CompletableFuture.supplyAsync(() -> {
+            if (QueryEventManager.callEvents(QueryEvent.Type.PRE_DELETE, this)) {
+                return true;
+            }
             String query = this.grammar.compileDelete(this);
             try (Connection c = connectionFactory.getConnection(); PreparedStatement ps = c
                 .prepareStatement(query)) {
@@ -529,12 +529,12 @@ public class QueryBuilder {
     public final CompletableFuture<Boolean> existsAsync() {
         return CompletableFuture.supplyAsync(() -> {
             String query = grammar.compileExists(this);
-            try(Connection con = connectionFactory.getConnection();
+            try (Connection con = connectionFactory.getConnection();
                 PreparedStatement ps = con.prepareStatement(query)) {
                 grammar.bind(this, ps);
                 log.trace("Executing exists: {}", ps);
-                try(ResultSet rs = ps.executeQuery()) {
-                    if(rs.next()) {
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
                         return rs.getBoolean("exists");
                     }
                 }
@@ -572,7 +572,8 @@ public class QueryBuilder {
      *
      * @return A list of {@link DbRow Rows}
      */
-    public CompletableFuture<List<DbRow>> rawAsync(@Language("SQL") String sql, Object... bindings) {
+    public CompletableFuture<List<DbRow>> rawAsync(@Language("SQL") String sql,
+        Object... bindings) {
         return CompletableFuture.supplyAsync(() -> {
             try (Connection con = connectionFactory.getConnection();
                 PreparedStatement statement = con.prepareStatement(sql)) {

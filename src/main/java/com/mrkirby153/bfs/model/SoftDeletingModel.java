@@ -10,16 +10,19 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.lang.reflect.Field;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Slf4j
 @Enhancer(SoftDeleteEnhancer.class)
 public class SoftDeletingModel extends Model {
+
+    private static final Map<Class<? extends Model>, List<String>> softDeletingColumnCache = new ConcurrentHashMap<>();
 
     private transient List<String> deletedAtCols = new ArrayList<>();
 
@@ -28,7 +31,7 @@ public class SoftDeletingModel extends Model {
     private boolean forced = false;
 
     public SoftDeletingModel() {
-        scanForDeletedAt();
+        deletedAtCols.addAll(getDeletedAtCols(getClass()));
     }
 
     /**
@@ -39,10 +42,20 @@ public class SoftDeletingModel extends Model {
      * @return The columns that should be deleted at
      */
     public static List<String> getDeletedAtCols(Class<? extends Model> clazz) {
-        return Arrays.stream(clazz.getDeclaredFields()).peek(f -> f.setAccessible(true))
-            .filter(f -> f.isAnnotationPresent(SoftDeleteField.class))
-            .map(ModelUtils::getColumnName).collect(
-                Collectors.toList());
+        return softDeletingColumnCache.computeIfAbsent(clazz, modelClazz -> {
+            List<String> columns = Arrays.stream(modelClazz.getDeclaredFields())
+                .peek(f -> f.setAccessible(true))
+                .filter(f -> f.isAnnotationPresent(SoftDeleteField.class))
+                .map(ModelUtils::getColumnName).collect(Collectors.toList());
+            log.trace("{} has {} soft deleting fields: {}", modelClazz, columns.size(),
+                String.join(", ", columns));
+            if (columns.size() > 1) {
+                log.warn(
+                    "{} has more than 1 soft delete column. This may cause unintentional side effects",
+                    modelClazz);
+            }
+            return columns;
+        });
     }
 
     /**
@@ -55,23 +68,6 @@ public class SoftDeletingModel extends Model {
     public static <T extends SoftDeletingModel> SoftDeletingModelQueryBuilder<T> withTrashed(
         Class<T> clazz) {
         return new SoftDeletingModelQueryBuilder<>(clazz);
-    }
-
-    private void scanForDeletedAt() {
-        deletedAtCols.clear();
-        for (Field f : getClass().getDeclaredFields()) {
-            f.setAccessible(true);
-            if (f.isAnnotationPresent(SoftDeleteField.class)) {
-                deletedAtCols.add(ModelUtils.getColumnName(f));
-            }
-        }
-        log.trace("Identified {} deleted at columns: ({})", deletedAtCols.size(),
-            String.join(", ", deletedAtCols));
-        if (deletedAtCols.size() > 1) {
-            log.warn(
-                "Found more than 1 soft deleting columns: {}. This may cause unintended side effects",
-                String.join(", ", deletedAtCols));
-        }
     }
 
     public void touchDeletedAt() {
@@ -109,13 +105,13 @@ public class SoftDeletingModel extends Model {
      * @return True if the model is trashed
      */
     public boolean isTrashed() {
-        boolean exists = true;
+        boolean trashed = false;
         for (String col : getDeletedAtCols(getClass())) {
             if (getData(col) != null) {
-                exists = false;
+                trashed = true;
             }
         }
-        return exists;
+        return trashed;
     }
 
     /**

@@ -287,14 +287,6 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
     }
 
     @Override
-    public CompletableFuture<List<DbRow>> queryAsync() {
-        enhance();
-        EnhancerUtils.withoutEnhancers(modelClass, enhancersToSkip.toArray(new String[0]))
-            .forEach(enhancer -> enhancer.onQuery(this));
-        return super.queryAsync();
-    }
-
-    @Override
     public List<DbRow> query() {
         enhance();
         EnhancerUtils.withoutEnhancers(modelClass, enhancersToSkip.toArray(new String[0]))
@@ -303,7 +295,16 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
     }
 
     @Override
+    public CompletableFuture<List<DbRow>> queryAsync() {
+        enhance();
+        EnhancerUtils.withoutEnhancers(modelClass, enhancersToSkip.toArray(new String[0]))
+            .forEach(enhancer -> enhancer.onQuery(this));
+        return super.queryAsync();
+    }
+
+    @Override
     public boolean delete() {
+        enhance();
         EnhancerUtils.withoutEnhancers(modelClass, enhancersToSkip.toArray(new String[0]))
             .forEach(enhancer -> enhancer.onDelete(model, this));
         if (model != null) {
@@ -313,6 +314,20 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
             where(primaryKey, data);
         }
         return super.delete();
+    }
+
+    @Override
+    public CompletableFuture<Boolean> deleteAsync() {
+        enhance();
+        EnhancerUtils.withoutEnhancers(modelClass, enhancersToSkip.toArray(new String[0]))
+            .forEach(enhancer -> enhancer.onDelete(model, this));
+        if (model != null) {
+            String primaryKey = model.getPrimaryKey();
+            Object data = model.getData(primaryKey);
+            log.trace("Deleting model with primary key {} = {}", primaryKey, data);
+            where(primaryKey, data);
+        }
+        return super.deleteAsync();
     }
 
     public CompletableFuture<Void> createAsync() {
@@ -332,7 +347,10 @@ public class ModelQueryBuilder<T extends Model> extends QueryBuilder {
                 return null;
             });
         } else {
-            return insert(data);
+            return insert(data).thenApply(result -> {
+                model.setExists(true);
+                return null;
+            });
         }
     }
 
