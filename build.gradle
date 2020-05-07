@@ -15,7 +15,7 @@ repositories {
 }
 
 group = 'com.mrkirby153'
-version = '2.2-SNAPSHOT'
+version = '2.2'
 targetCompatibility = '1.8'
 sourceCompatibility = '1.8'
 
