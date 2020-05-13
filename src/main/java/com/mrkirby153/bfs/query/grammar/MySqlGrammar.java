@@ -109,7 +109,7 @@ public class MySqlGrammar implements Grammar {
                     query.append(" ");
                 }
             } catch (NoSuchMethodException e) {
-                log.warn("Method {} does not exist", methodName);
+                // Ignore
             } catch (IllegalAccessException | InvocationTargetException e) {
                 log.warn("An error occurred when compiling {}", s, e);
             }
